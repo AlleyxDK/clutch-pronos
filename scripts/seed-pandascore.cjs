@@ -1,14 +1,10 @@
 // scripts/seed-pandascore.cjs
 // Extension .cjs et non .js : package.json déclare "type": "module", donc un
 // fichier .js serait chargé comme module ES et `require` y serait indéfini.
-// Charge .env si disponible (contexte local). Silencieux si absent (CI).
-try {
-  require('dotenv').config({ path: __dirname + '/.env' });
-} catch (_) {
-  // dotenv absent : on est en CI, les env vars sont fournies par le runner
-}
+require('dotenv').config({ path: __dirname + '/.env' });
 
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 
 // Charge le service account : env var (CI) ou fichier local (dev).
 let serviceAccount;
@@ -34,8 +30,8 @@ if (!PANDA_TOKEN) {
   process.exit(1);
 }
 
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-const db = admin.firestore();
+initializeApp({ credential: cert(serviceAccount) });
+const db = getFirestore();
 
 const PANDA_BASE = 'https://api.pandascore.co';
 const AUTH_HEADER = { 'Authorization': `Bearer ${PANDA_TOKEN}` };
@@ -94,7 +90,7 @@ async function transformMatch(m) {
       cote: 1.5,
       form: '',
     },
-    start_time: admin.firestore.Timestamp.fromDate(new Date(m.scheduled_at)),
+    start_time: Timestamp.fromDate(new Date(m.scheduled_at)),
     mvps: [...mvpsA, ...mvpsB],
   };
 }
