@@ -1,0 +1,58 @@
+.hero {
+  padding: 56px 0 32px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.eyebrowDot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 var(--accent-glow);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(32px, 4.5vw, 48px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  /* Ajout hors spec: le reset global met margin 0, le titre collait au paragraphe */
+  margin-bottom: 16px;
+}
+
+.titleAccent {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.lede {
+  color: var(--text-2);
+  font-size: 16px;
+  max-width: 620px;
+  margin-bottom: 32px;
+}

@@ -1,0 +1,258 @@
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: border-color 0.2s, background-color 0.2s, transform 0.2s;
+}
+
+.card:hover {
+  border-color: var(--border-warm);
+  background: var(--surface-2);
+  transform: translateY(-2px);
+}
+
+/* ---- Ligne méta ---- */
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.metaLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tournament {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.time {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.timeLocked {
+  color: var(--text-3);
+}
+
+/* ---- Les deux équipes ---- */
+
+.teams {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.teamInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  /* Ajout hors spec: sans min-width 0 sur ce conteneur intermédiaire,
+     l'ellipsis demandée sur .teamName ne se déclenche jamais */
+  min-width: 0;
+}
+
+.teamName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.2;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.teamPts {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.2;
+}
+
+.right {
+  justify-content: flex-end;
+}
+
+.right .teamInfo {
+  align-items: flex-end;
+}
+
+.right .teamName {
+  text-align: right;
+}
+
+.vs {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-3);
+  text-align: center;
+}
+
+/* ---- Pied de carte ---- */
+
+.status {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.deadline {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.statusDone {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--success);
+}
+
+.statusLocked {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.statusNoProno {
+  font-size: 13px;
+  color: var(--text-3);
+}
+
+/* ---- Match résulté ---- */
+
+.statusResult {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-1);
+}
+
+.statusGain {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--success);
+}
+
+.adminBtn {
+  padding: 6px 10px;
+  background: var(--surface-2);
+  color: var(--text-3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.adminBtn:hover {
+  color: var(--text-1);
+  border-color: var(--border-strong);
+}
+
+/* ---- Reveal compact ---- */
+
+.statusStacked {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+}
+
+.pillAvatar {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--accent), var(--danger));
+  color: var(--bg);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 9px;
+}
+
+.pillText {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-2);
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pillMore {
+  /* Ajout hors spec: sans avatar à gauche, le padding réduit de .pill
+     déséquilibrerait le "+N". On le rétablit symétrique. */
+  padding-left: 8px;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-2);
+  opacity: 0.7;
+}
+
+.btnMini {
+  padding: 7px 14px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border-warm);
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  /* Ajout hors spec: un <button> n'hérite ni la police du body ni le curseur,
+     et le libellé se couperait en deux sur les cartes étroites */
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.btnMini:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}

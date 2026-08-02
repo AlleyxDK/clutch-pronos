@@ -1,0 +1,19 @@
+.form {
+  display: flex;
+  gap: 4px;
+}
+
+.pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  opacity: 0.75;
+}
+
+.win {
+  background: var(--success);
+}
+
+.loss {
+  background: var(--danger);
+}

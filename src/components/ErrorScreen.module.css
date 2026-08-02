@@ -1,0 +1,13 @@
+.screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+  text-align: center;
+}
+
+.message {
+  color: var(--text-2);
+  font-size: 15px;
+}

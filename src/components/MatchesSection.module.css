@@ -1,0 +1,80 @@
+.section {
+  padding: 56px 0 24px;
+}
+
+/* ---- En-tête de section ---- */
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+/* ---- Onglets de filtre ---- */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-1);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.tab {
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  /* Ajout hors spec: un <button> n'hérite pas la police du body */
+  font-family: inherit;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.tab:hover {
+  color: var(--text-1);
+}
+
+.tabActive {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+
+/* ---- Grille ---- */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

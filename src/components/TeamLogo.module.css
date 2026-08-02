@@ -1,0 +1,67 @@
+.logo {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1;
+}
+
+/* ---- Tailles ---- */
+
+.lg {
+  width: 88px;
+  height: 88px;
+  border-radius: 20px;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+}
+
+.sm {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+/* ---- Couleurs par équipe ---- */
+
+.t1 {
+  background: linear-gradient(135deg, #E2013A, #9A0126);
+}
+
+.geng {
+  background: linear-gradient(135deg, #AA8B56, #6B5537);
+}
+
+.g2 {
+  background: linear-gradient(135deg, #1A1A1A, #2D2D2D);
+  border: 1px solid #FF5722;
+  color: #FF5722;
+}
+
+.fnc {
+  background: linear-gradient(135deg, #FF5900, #B33F00);
+}
+
+.drx {
+  background: linear-gradient(135deg, #1E5FCE, #143F87);
+}
+
+.koi {
+  background: linear-gradient(135deg, #8A38F5, #5A1FA8);
+}
+
+.mad {
+  background: linear-gradient(135deg, #DE1F26, #94151A);
+}
+
+.hle {
+  background: linear-gradient(135deg, #FF7A00, #B85400);
+}
+
+.fallback {
+  background: var(--surface-3);
+}

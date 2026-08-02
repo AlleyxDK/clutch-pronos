@@ -1,0 +1,58 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(14, 13, 16, 0.8);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.card {
+  position: relative;
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  max-width: 640px;
+  width: 100%;
+  padding: 32px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.close:hover {
+  color: var(--text-1);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+  /* Ajout hors spec: sans marge droite, un titre long passerait sous la croix */
+  padding-right: 32px;
+}
+
+.subtitle {
+  color: var(--text-2);
+  font-size: 14px;
+  margin-bottom: 24px;
+}

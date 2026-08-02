@@ -1,0 +1,118 @@
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(14, 13, 16, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+/* ---- Marque ---- */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mark {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  background: var(--accent);
+  clip-path: polygon(20% 0, 100% 0, 80% 100%, 0 100%);
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.dot {
+  color: var(--accent);
+}
+
+/* ---- Bloc de droite ---- */
+
+/* Ajout hors spec: conteneur nécessaire pour aligner le bouton seed et la
+   pastille, la nav n'ayant que deux enfants directs jusqu'ici. */
+.right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.seed {
+  padding: 6px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.seed:hover {
+  color: var(--text-1);
+  border-color: var(--border-strong);
+}
+
+/* ---- Pastille utilisateur ---- */
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: 100px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--danger));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-1);
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.username {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.points {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+}
