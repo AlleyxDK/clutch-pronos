@@ -89,7 +89,12 @@ function MatchCard({
 
       <div className={styles.teams}>
         <div className={styles.team}>
-          <TeamLogo sigil={teamSigil(match.team_a.id)} teamId={match.team_a.id} size="sm" />
+          <TeamLogo
+            sigil={teamSigil(match.team_a.id)}
+            teamId={match.team_a.id}
+            size="sm"
+            imageUrl={match.team_a.image_url}
+          />
           <div className={styles.teamInfo}>
             <span className={styles.teamName}>{match.team_a.name}</span>
             <FormDots form={match.team_a.form} />
@@ -105,7 +110,12 @@ function MatchCard({
             <FormDots form={match.team_b.form} />
             <span className={styles.teamPts}>{winnerPts(match.team_b.cote)} pts si vainqueur</span>
           </div>
-          <TeamLogo sigil={teamSigil(match.team_b.id)} teamId={match.team_b.id} size="sm" />
+          <TeamLogo
+            sigil={teamSigil(match.team_b.id)}
+            teamId={match.team_b.id}
+            size="sm"
+            imageUrl={match.team_b.image_url}
+          />
         </div>
       </div>
 

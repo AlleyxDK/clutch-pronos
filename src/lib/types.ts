@@ -6,6 +6,7 @@ export interface Team {
   region: string;
   cote: number;
   form: string; // ex "WWWLW"
+  image_url?: string | null; // optionnel : les matches hardcodés n'en ont pas
 }
 
 export interface Match {

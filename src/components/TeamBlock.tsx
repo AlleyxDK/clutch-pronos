@@ -12,7 +12,12 @@ interface TeamBlockProps {
 function TeamBlock({ team }: TeamBlockProps) {
   return (
     <div className={styles.team}>
-      <TeamLogo sigil={teamSigil(team.id)} teamId={team.id} size="lg" />
+      <TeamLogo
+        sigil={teamSigil(team.id)}
+        teamId={team.id}
+        size="lg"
+        imageUrl={team.image_url}
+      />
       <span className={styles.name}>{team.name}</span>
       <span className={styles.region}>{team.region}</span>
       <FormDots form={team.form} />

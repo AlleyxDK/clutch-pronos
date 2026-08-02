@@ -80,6 +80,7 @@ async function transformMatch(m) {
       id: `panda-${opA.id}`,
       name: opA.name || '?',
       region: opA.location || '?',
+      image_url: opA.image_url || null,
       cote: 1.5,       // placeholder — sera géré par un autre système plus tard
       form: '',        // placeholder — pas d'historique dans le fixtures tier
     },
@@ -87,6 +88,7 @@ async function transformMatch(m) {
       id: `panda-${opB.id}`,
       name: opB.name || '?',
       region: opB.location || '?',
+      image_url: opB.image_url || null,
       cote: 1.5,
       form: '',
     },
