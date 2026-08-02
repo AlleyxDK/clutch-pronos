@@ -1,9 +1,32 @@
 // scripts/seed-pandascore.cjs
 // Extension .cjs et non .js : package.json déclare "type": "module", donc un
 // fichier .js serait chargé comme module ES et `require` y serait indéfini.
-require('dotenv').config({ path: __dirname + '/.env' });
+// Charge .env si disponible (contexte local). Silencieux si absent (CI).
+try {
+  require('dotenv').config({ path: __dirname + '/.env' });
+} catch (_) {
+  // dotenv absent : on est en CI, les env vars sont fournies par le runner
+}
+
 const admin = require('firebase-admin');
-const serviceAccount = require('./serviceAccount.json');
+
+// Charge le service account : env var (CI) ou fichier local (dev).
+let serviceAccount;
+if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+  try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  } catch (err) {
+    console.error('❌ FIREBASE_SERVICE_ACCOUNT_JSON présent mais mal formé:', err.message);
+    process.exit(1);
+  }
+} else {
+  try {
+    serviceAccount = require('./serviceAccount.json');
+  } catch (err) {
+    console.error('❌ Ni FIREBASE_SERVICE_ACCOUNT_JSON (env) ni scripts/serviceAccount.json (fichier) disponibles.');
+    process.exit(1);
+  }
+}
 
 const PANDA_TOKEN = process.env.PANDASCORE_TOKEN;
 if (!PANDA_TOKEN) {
