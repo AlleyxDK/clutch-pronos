@@ -4,7 +4,7 @@
 require('dotenv').config({ path: __dirname + '/.env' });
 
 const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+const { getFirestore, Timestamp, FieldPath } = require('firebase-admin/firestore');
 
 // Charge le service account : env var (CI) ou fichier local (dev).
 let serviceAccount;
@@ -39,9 +39,19 @@ const AUTH_HEADER = { 'Authorization': `Bearer ${PANDA_TOKEN}` };
 // Détermine la CompetitionId à partir du nom de league PandaScore.
 function detectCompetition(leagueName) {
   const n = (leagueName || '').toLowerCase();
+
+  // Exclusion des ligues de développement / académie
+  if (n.includes('challengers')) return null;
+  if (n.includes('academy')) return null;
+  if (n.includes('emergent')) return null;
+  if (n.includes('rising')) return null;
+  if (n.includes('development')) return null;
+
+  // Ligues pros ciblées
   if (n.includes('lec')) return 'lec';
   if (n.includes('lck')) return 'lck';
   if (n.includes('esports world cup') || n.includes('ewc')) return 'ewc';
+
   return null;
 }
 
@@ -98,6 +108,33 @@ async function transformMatch(m) {
 }
 
 async function main() {
+  console.log('🧹 Nettoyage des matches PandaScore obsolètes...');
+  const existingSnap = await db.collection('matches')
+    .where(FieldPath.documentId(), '>=', 'pandascore-')
+    .where(FieldPath.documentId(), '<', 'pandascore.')
+    .get();
+
+  let deletedCount = 0;
+  const batchDelete = db.batch();
+  for (const doc of existingSnap.docs) {
+    const data = doc.data();
+    // Ne touche jamais un match qui a un résultat — protection de l'historique.
+    if (data.result) continue;
+    // Si sa compétition n'est plus reconnue par les filtres actuels, on supprime.
+    // (La re-écriture des matches valides se fera juste après, dans le batch normal.)
+    const stillValid = ['lec', 'lck', 'ewc'].includes(data.competition);
+    if (!stillValid) {
+      batchDelete.delete(doc.ref);
+      deletedCount++;
+    }
+  }
+  if (deletedCount > 0) {
+    await batchDelete.commit();
+    console.log(`   Supprimé ${deletedCount} matches devenus obsolètes.`);
+  } else {
+    console.log('   Rien à supprimer.');
+  }
+
   console.log('📡 Fetch des matches upcoming depuis PandaScore...');
   const res = await fetch(
     `${PANDA_BASE}/lol/matches/upcoming?per_page=50`,

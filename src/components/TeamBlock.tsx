@@ -13,7 +13,7 @@ function TeamBlock({ team }: TeamBlockProps) {
   return (
     <div className={styles.team}>
       <TeamLogo
-        sigil={teamSigil(team.id)}
+        sigil={teamSigil(team.name)}
         teamId={team.id}
         size="lg"
         imageUrl={team.image_url}
