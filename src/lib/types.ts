@@ -1,5 +1,12 @@
 import type { CompetitionId } from './competitions'
 
+/*
+ * Ajout hors spec: ré-export. CompetitionId est déclaré dans competitions.ts,
+ * mais la spec (et désormais plusieurs modules) l'importe depuis types.ts.
+ * On en fait la surface d'import unique plutôt que de disperser les origines.
+ */
+export type { CompetitionId }
+
 export interface Team {
   id: string;
   name: string;
@@ -54,4 +61,5 @@ export interface League {
   creatorId: string;    // UID du créateur
   memberIds: string[];  // liste des UID membres
   createdAt: number;    // ms epoch
+  competitionIds?: CompetitionId[]; // absent = toutes les compétitions (rétrocompat)
 }

@@ -6,8 +6,30 @@
   border: 1px solid var(--border-warm);
   border-radius: 10px;
   margin-bottom: 20px;
+}
+
+.introHeadline {
+  display: block;
   font-family: var(--font-body);
   font-size: 14px;
+  color: var(--text-1);
+  line-height: 1.4;
+}
+
+.introStats {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-3);
+  letter-spacing: 0.02em;
+}
+
+.introGapLine {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
   color: var(--text-1);
   line-height: 1.4;
 }
@@ -19,6 +41,54 @@
 
 .introMuted {
   color: var(--text-2);
+  font-size: 14px;
+}
+
+/* ---- Colonnes (mêmes largeurs dans l'en-tête et les lignes) ---- */
+
+.colRank {
+  min-width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.colPlayer {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.colPts {
+  min-width: 60px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.colStat {
+  min-width: 50px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.colExact {
+  min-width: 55px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ---- En-tête ---- */
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
 }
 
 /* ---- Classement ---- */
@@ -46,8 +116,6 @@
 }
 
 .rank {
-  min-width: 32px;
-  text-align: right;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 20px;
@@ -59,9 +127,15 @@
   color: var(--accent);
 }
 
+.player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .avatar {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   border-radius: 50%;
   display: flex;
@@ -71,11 +145,10 @@
   color: var(--bg);
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .pseudo {
-  flex-grow: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -87,12 +160,18 @@
 }
 
 .total {
-  min-width: 60px;
-  text-align: right;
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: 16px;
   color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -108,4 +187,39 @@
   font-size: 12px;
   color: var(--text-3);
   cursor: help;
+}
+
+/* ---- Mobile : on resserre les colonnes chiffrées ---- */
+
+@media (max-width: 600px) {
+  .head,
+  .row {
+    gap: 8px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .colRank {
+    min-width: 22px;
+  }
+
+  .colPts {
+    min-width: 50px;
+  }
+
+  .colStat {
+    min-width: 40px;
+  }
+
+  .colExact {
+    min-width: 45px;
+  }
+
+  .pseudo {
+    font-size: 14px;
+  }
+
+  .stat {
+    font-size: 13px;
+  }
 }

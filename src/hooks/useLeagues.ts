@@ -12,7 +12,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import type { DocumentData } from 'firebase/firestore'
-import type { League } from '../lib/types'
+import type { CompetitionId, League } from '../lib/types'
 import { db } from '../lib/firebase'
 import { generateLeagueCode } from '../lib/leagueCode'
 
@@ -24,6 +24,13 @@ function toLeague(id: string, data: DocumentData): League {
     creatorId: data.creatorId,
     memberIds: data.memberIds ?? [],
     createdAt: data.createdAt?.toMillis() ?? Date.now(),
+    /*
+     * Ajout hors spec: mapping du champ competitionIds, absent de la spec.
+     * Sans lui le champ serait écrit en base mais ne remonterait jamais à
+     * l'app, et toutes les ligues retomberaient sur « toutes compétitions ».
+     * Laissé undefined si absent : c'est ce que leagueCompetitionIds attend.
+     */
+    competitionIds: data.competitionIds,
   }
 }
 
@@ -59,7 +66,7 @@ export function useLeagues(userId: string | null) {
   }, [userId])
 
   const createLeague = useCallback(
-    async (name: string): Promise<League> => {
+    async (name: string, competitionIds: CompetitionId[]): Promise<League> => {
       if (userId === null) {
         throw new Error("useLeagues: impossible de créer une ligue sans utilisateur connecté")
       }
@@ -67,6 +74,7 @@ export function useLeagues(userId: string | null) {
       const trimmed = name.trim()
       if (trimmed.length < 2) throw new Error('Le nom doit faire au moins 2 caractères.')
       if (trimmed.length > 40) throw new Error('Le nom ne peut pas dépasser 40 caractères.')
+      if (competitionIds.length === 0) throw new Error('Sélectionne au moins une compétition')
 
       // L'ID est pré-généré côté client pour pouvoir le référencer depuis
       // codes/{code} dans le même batch.
@@ -90,6 +98,7 @@ export function useLeagues(userId: string | null) {
         creatorId: userId,
         memberIds: [userId],
         createdAt: serverTimestamp(),
+        competitionIds,
       })
       batch.set(doc(db, 'codes', code), {
         leagueId: leagueRef.id,
@@ -103,6 +112,7 @@ export function useLeagues(userId: string | null) {
         code,
         creatorId: userId,
         memberIds: [userId],
+        competitionIds,
         /*
          * Ajout hors spec: createdAt local. serverTimestamp() n'est qu'un
          * marqueur tant que le serveur n'a pas répondu, il n'est pas lisible

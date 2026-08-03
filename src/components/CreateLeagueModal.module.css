@@ -31,9 +31,49 @@
   border-color: var(--accent);
 }
 
+.hint {
+  color: var(--text-2);
+  font-size: 13px;
+  margin-top: -2px;
+  margin-bottom: 2px;
+}
+
+/* ---- Chips de compétition ---- */
+
+.comps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.comp {
+  padding: 8px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.comp:hover {
+  border-color: var(--border-strong);
+  color: var(--text-1);
+}
+
+.compActive {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .error {
   color: var(--danger);
   font-size: 13px;
+  margin-bottom: 16px;
 }
 
 .actions {

@@ -3,6 +3,7 @@ import type { League, Match, Profile, Prono } from '../lib/types'
 import type { RevealedPronoState } from '../hooks/useRevealedPronos'
 import { calculatePoints } from '../lib/points'
 import { pseudoInitials } from '../lib/initials'
+import { matchInLeague } from '../lib/leagueCompetitions'
 import Modal from './Modal'
 import styles from './LeagueDetailModal.module.css'
 
@@ -17,8 +18,11 @@ interface LeagueDetailModalProps {
   onClose: () => void
 }
 
-interface MemberScore {
+interface MemberStats {
   total: number
+  correctWinners: number
+  exactScores: number
+  mvpBonuses: number
   hasErrors: boolean
   isPending: boolean
 }
@@ -35,31 +39,41 @@ function LeagueDetailModal({
   friendProfiles,
   onClose,
 }: LeagueDetailModalProps) {
-  const computeMemberScore = (userId: string): MemberScore => {
+  const computeMemberStats = (userId: string): MemberStats => {
     let total = 0
+    let correctWinners = 0
+    let exactScores = 0
+    let mvpBonuses = 0
     let hasErrors = false
     let allResultedFetchedOrAbsent = true
 
+    const accumulate = (match: Match, prono: Prono) => {
+      const pts = calculatePoints(match, prono)
+      total += pts.total
+      if (pts.winner > 0) correctWinners++
+      if (pts.scoreBonus > 0) exactScores++
+      if (pts.mvpBonus > 0) mvpBonuses++
+    }
+
     for (const match of matches) {
+      if (!matchInLeague(match, league)) continue
       if (!match.result) continue
 
       /*
        * Ajout hors spec: l'utilisateur courant est traité à part. Ses pronos
        * viennent d'un onSnapshot fiable, donc l'absence d'un prono signifie
-       * « pas de pronostic », jamais « pas encore chargé ». La version de la
-       * spec retombait sur la branche `state === undefined` et le marquait
-       * pending à vie dès qu'il avait sauté un match résulté.
+       * « pas de pronostic », jamais « pas encore chargé ».
        */
       if (userId === currentUserId) {
         const ownProno = pronos[match.id]
-        if (ownProno) total += calculatePoints(match, ownProno).total
+        if (ownProno) accumulate(match, ownProno)
         continue
       }
 
       const state = revealedPronos[`${userId}__${match.id}`]
 
       if (state?.status === 'ready') {
-        total += calculatePoints(match, state.prono).total
+        accumulate(match, state.prono)
       } else if (state?.status === 'error') {
         hasErrors = true
         allResultedFetchedOrAbsent = false
@@ -69,14 +83,21 @@ function LeagueDetailModal({
       // status 'absent' = pas de prono, 0 pts, pas de bruit
     }
 
-    return { total, hasErrors, isPending: !allResultedFetchedOrAbsent }
+    return {
+      total,
+      correctWinners,
+      exactScores,
+      mvpBonuses,
+      hasErrors,
+      isPending: !allResultedFetchedOrAbsent,
+    }
   }
 
   const rows = league.memberIds.map((uid) => {
     const pseudo =
       uid === currentUserId ? currentUserPseudo : (friendProfiles[uid]?.pseudo ?? 'Chargement…')
-    const score = computeMemberScore(uid)
-    return { uid, pseudo, ...score, isCurrentUser: uid === currentUserId }
+    const stats = computeMemberStats(uid)
+    return { uid, pseudo, ...stats, isCurrentUser: uid === currentUserId }
   })
   rows.sort((a, b) => b.total - a.total || a.pseudo.localeCompare(b.pseudo))
 
@@ -88,25 +109,47 @@ function LeagueDetailModal({
   let intro: ReactNode
   if (myRow?.hasErrors || myRow?.isPending) {
     intro = <span className={styles.introMuted}>Chargement du classement en cours…</span>
-  } else if (total === 1) {
-    intro = <>Tu es le seul joueur pour l'instant. Invite tes potes avec le code {league.code}.</>
-  } else if (myPosition === 1) {
-    const gap = rows[0].total - rows[1].total
-    intro =
-      gap === 0 ? (
-        <>Tu es en tête à égalité avec {rows[1].pseudo}.</>
-      ) : (
+  } else {
+    let headline: ReactNode
+    let gapLine: ReactNode = null
+
+    if (total === 1) {
+      headline = <>Tu es le seul joueur pour l'instant. Invite tes potes avec le code {league.code}.</>
+    } else if (myPosition === 1) {
+      const gap = rows[0].total - rows[1].total
+      if (gap === 0) {
+        headline = <>Tu es en tête à égalité avec {rows[1].pseudo}.</>
+      } else {
+        headline = <>Tu es en tête.</>
+        gapLine = (
+          <>
+            {rows[1].pseudo} gratte à <b className={styles.introGap}>{gap} pts</b> derrière.
+          </>
+        )
+      }
+    } else {
+      const gap = rows[0].total - myTotal
+      headline = (
         <>
-          Tu es en tête. {rows[1].pseudo} gratte à <b className={styles.introGap}>{gap} pts</b>{' '}
-          derrière.
+          Tu es {myPosition}e sur {total}.
         </>
       )
-  } else {
-    const gap = rows[0].total - myTotal
+      gapLine = (
+        <>
+          Il te manque <b className={styles.introGap}>{gap} pts</b> pour rattraper{' '}
+          {rows[0].pseudo}.
+        </>
+      )
+    }
+
     intro = (
       <>
-        Tu es {myPosition}e sur {total}. Il te manque{' '}
-        <b className={styles.introGap}>{gap} pts</b> pour rattraper {rows[0].pseudo}.
+        <span className={styles.introHeadline}>{headline}</span>
+        <span className={styles.introStats}>
+          {myRow?.correctWinners ?? 0} bons · {myRow?.exactScores ?? 0} exacts ·{' '}
+          {myRow?.mvpBonuses ?? 0} MVP
+        </span>
+        {gapLine && <span className={styles.introGapLine}>{gapLine}</span>}
       </>
     )
   }
@@ -119,34 +162,52 @@ function LeagueDetailModal({
     >
       <div className={styles.intro}>{intro}</div>
 
+      <div className={styles.head}>
+        <span className={styles.colRank}>#</span>
+        <span className={styles.colPlayer}>Joueur</span>
+        <span className={styles.colPts}>Pts</span>
+        <span className={styles.colStat}>Bons</span>
+        <span className={styles.colExact}>Exacts</span>
+        <span className={styles.colStat}>MVP</span>
+      </div>
+
       <div className={styles.rows}>
         {rows.map((row, index) => (
           <div
             key={row.uid}
             className={`${styles.row} ${row.isCurrentUser ? styles.rowMe : ''}`}
           >
-            <span className={`${styles.rank} ${row.isCurrentUser ? styles.rankMe : ''}`}>
+            <span
+              className={`${styles.colRank} ${styles.rank} ${row.isCurrentUser ? styles.rankMe : ''}`}
+            >
               {index + 1}
             </span>
 
-            <span className={styles.avatar}>{pseudoInitials(row.pseudo)}</span>
+            <span className={`${styles.colPlayer} ${styles.player}`}>
+              <span className={styles.avatar}>{pseudoInitials(row.pseudo)}</span>
+              <span className={styles.pseudo}>{row.pseudo}</span>
 
-            <span className={styles.pseudo}>{row.pseudo}</span>
+              {row.hasErrors ? (
+                <span
+                  className={styles.flagError}
+                  title="Impossible de charger tous les pronos de ce joueur — total possiblement incomplet"
+                >
+                  ⚠
+                </span>
+              ) : row.isPending ? (
+                <span className={styles.flagPending} title="Chargement en cours">
+                  …
+                </span>
+              ) : null}
+            </span>
 
-            <span className={styles.total}>{numberFormat.format(row.total)}</span>
+            <span className={`${styles.colPts} ${styles.total}`}>
+              {numberFormat.format(row.total)}
+            </span>
 
-            {row.hasErrors ? (
-              <span
-                className={styles.flagError}
-                title="Impossible de charger tous les pronos de ce joueur — total possiblement incomplet"
-              >
-                ⚠
-              </span>
-            ) : row.isPending ? (
-              <span className={styles.flagPending} title="Chargement en cours">
-                …
-              </span>
-            ) : null}
+            <span className={`${styles.colStat} ${styles.stat}`}>{row.correctWinners}</span>
+            <span className={`${styles.colExact} ${styles.stat}`}>{row.exactScores}</span>
+            <span className={`${styles.colStat} ${styles.stat}`}>{row.mvpBonuses}</span>
           </div>
         ))}
       </div>
