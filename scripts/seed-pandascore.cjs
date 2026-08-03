@@ -109,28 +109,31 @@ async function transformMatch(m) {
 
 async function main() {
   console.log('🧹 Nettoyage des matches PandaScore obsolètes...');
-  const existingSnap = await db.collection('matches')
-    .where(FieldPath.documentId(), '>=', 'pandascore-')
-    .where(FieldPath.documentId(), '<', 'pandascore.')
-    .get();
+
+  const existingSnap = await db.collection('matches').get();
+  const AMATEUR_KEYWORDS = ['challengers', 'academy', 'emergent', 'rising', 'development'];
 
   let deletedCount = 0;
   const batchDelete = db.batch();
   for (const doc of existingSnap.docs) {
+    const id = doc.id;
+    if (!id.startsWith('pandascore-')) continue;   // on ne touche que les matches PandaScore
+
     const data = doc.data();
-    // Ne touche jamais un match qui a un résultat — protection de l'historique.
-    if (data.result) continue;
-    // Si sa compétition n'est plus reconnue par les filtres actuels, on supprime.
-    // (La re-écriture des matches valides se fera juste après, dans le batch normal.)
-    const stillValid = ['lec', 'lck', 'ewc'].includes(data.competition);
-    if (!stillValid) {
+    if (data.result) continue;                     // protection : jamais toucher un match résulté
+
+    const tournamentLower = (data.tournament || '').toLowerCase();
+    const isAmateur = AMATEUR_KEYWORDS.some(kw => tournamentLower.includes(kw));
+
+    if (isAmateur) {
       batchDelete.delete(doc.ref);
       deletedCount++;
     }
   }
+
   if (deletedCount > 0) {
     await batchDelete.commit();
-    console.log(`   Supprimé ${deletedCount} matches devenus obsolètes.`);
+    console.log(`   Supprimé ${deletedCount} matches d'académie/développement.`);
   } else {
     console.log('   Rien à supprimer.');
   }
