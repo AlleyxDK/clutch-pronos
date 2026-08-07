@@ -1,10 +1,11 @@
 import { useMemo } from 'react'
 import type { Match, Profile, Prono } from '../lib/types'
 import { seedMatchesToFirestore } from '../lib/seedMatches'
-import { pseudoInitials } from '../lib/initials'
 import { calculatePoints } from '../lib/points'
-import { computeStreak, streakLevel } from '../lib/streak'
+import { computeStreak } from '../lib/streak'
+import { effectiveFrame } from '../lib/frames'
 import { isAdmin } from '../lib/admin'
+import Avatar from './Avatar'
 import AvatarFrame from './AvatarFrame'
 import styles from './Nav.module.css'
 
@@ -16,6 +17,8 @@ interface NavProps {
   isVisitor?: boolean
   onOpenAuth?: (context: string) => void
   profile?: Profile | null
+  // Graine de repli pour l'avatar procédural des profils sans champ `avatar`.
+  userId?: string
   onOpenOwnProfile?: () => void
 }
 
@@ -27,6 +30,7 @@ function Nav({
   isVisitor,
   onOpenAuth,
   profile,
+  userId,
   onOpenOwnProfile,
 }: NavProps) {
   const totalPoints = useMemo(() => {
@@ -48,7 +52,8 @@ function Nav({
     return Math.max(current, profile.currentStreak ?? 0)
   }, [matches, pronos, profile])
 
-  const level = streakLevel(displayStreak)
+  // Le cadre suit le choix du joueur ; à défaut il est dérivé du streak.
+  const level = effectiveFrame(profile)
 
   const handleSeed = async () => {
     try {
@@ -102,11 +107,19 @@ function Nav({
                 aria-label="Voir mon profil"
               >
                 <AvatarFrame size="sm" level={level}>
-                  <span className={styles.avatar}>{pseudoInitials(pseudo)}</span>
+                  <Avatar
+                    profile={profile}
+                    size={32}
+                    fallbackPseudo={pseudo}
+                    fallbackSeed={userId}
+                  />
                 </AvatarFrame>
 
                 <span className={styles.identity}>
                   <span className={styles.username}>{pseudo}</span>
+                  {profile?.selectedTitle !== undefined && (
+                    <span className={styles.userTitle}>{profile.selectedTitle}</span>
+                  )}
                   <span className={styles.points}>{totalPoints} pts</span>
                 </span>
 

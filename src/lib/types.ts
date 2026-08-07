@@ -42,12 +42,31 @@ export interface MatchResult {
   aggregates: MatchAggregates;
 }
 
+export type AvatarKind =
+  | { type: 'dicebear'; seed: string }         // avatar procédural (défaut)
+  | { type: 'special'; id: string };           // avatar spécial débloqué
+
+export type FrameKind =
+  | 'none'
+  | 'bronze' | 'silver' | 'gold' | 'fire'      // streak-based (dynamiques)
+  | 'trophy-precision' | 'trophy-mvp' | 'trophy-streak'
+  | 'trophy-loyalty' | 'trophy-lec' | 'trophy-lck' | 'trophy-ewc'
+  | 'trophy-underdog' | 'trophy-season';
+
+export interface Trophy {
+  id: string;          // 'first-exact', 'ten-exacts', etc.
+  unlockedAt: number;  // ms epoch
+}
+
 export interface Profile {
   pseudo: string;
   createdAt: number; // ms epoch
   // Optionnels : les profils créés avant l'arrivée des streaks ne les ont pas.
   currentStreak?: number;
   longestStreak?: number;
+  avatar?: AvatarKind;       // undefined = fallback dicebear par uid
+  selectedFrame?: FrameKind; // undefined = auto selon streak
+  selectedTitle?: string;    // titre textuel sous le pseudo
 }
 
 export interface Prono {

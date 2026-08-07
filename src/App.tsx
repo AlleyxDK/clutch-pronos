@@ -9,7 +9,7 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore'
-import type { League, Prono } from './lib/types'
+import type { AvatarKind, FrameKind, League, Prono } from './lib/types'
 import { db } from './lib/firebase'
 import { isMatchLocked, isMatchResulted, heroWindowMs } from './lib/matchStatus'
 import { computeStreak } from './lib/streak'
@@ -21,6 +21,7 @@ import { useMatches } from './hooks/useMatches'
 import { useTick } from './hooks/useTick'
 import { useFriends } from './hooks/useFriends'
 import { useRevealedPronos } from './hooks/useRevealedPronos'
+import { useTrophies } from './hooks/useTrophies'
 import Nav from './components/Nav'
 import Hero from './components/Hero'
 import LeaguesSection from './components/LeaguesSection'
@@ -36,6 +37,10 @@ import Onboarding from './components/Onboarding'
 import AuthModal from './components/AuthModal'
 import ProfileModal from './components/ProfileModal'
 import EditProfileModal from './components/EditProfileModal'
+import AvatarPickerModal from './components/AvatarPickerModal'
+import FramePickerModal from './components/FramePickerModal'
+import TitlePickerModal from './components/TitlePickerModal'
+import TrophyToast from './components/TrophyToast'
 import ConversionBanner from './components/ConversionBanner'
 import ConvertAccountModal from './components/ConvertAccountModal'
 import SplashScreen from './components/SplashScreen'
@@ -54,6 +59,11 @@ function App() {
   const { pronos, submitProno } = usePronos(user?.uid ?? null)
   const { leagues, createLeague, joinLeague } = useLeagues(user?.uid ?? null)
   const { matches, loading: matchesLoading } = useMatches()
+  const {
+    trophies,
+    currentToast,
+    dismissToast,
+  } = useTrophies(user?.uid ?? null, matches, pronos)
 
   // Re-rendu chaque seconde : c'est ce qui fait basculer les cartes en
   // « verrouillé » au kick-off sans que l'utilisateur ait à interagir.
@@ -73,6 +83,7 @@ function App() {
   const [authModalContext, setAuthModalContext] = useState<string | null>(null)
   const [viewingProfileUid, setViewingProfileUid] = useState<string | null>(null)
   const [editingProfile, setEditingProfile] = useState(false)
+  const [picker, setPicker] = useState<'avatar' | 'frame' | 'title' | null>(null)
 
   /*
    * Réconciliation du streak. Le streak vit dans Firestore pour être lisible
@@ -124,6 +135,32 @@ function App() {
   const handleSavePseudo = useCallback(
     async (newPseudo: string) => {
       await saveProfile({ pseudo: newPseudo })
+    },
+    [saveProfile],
+  )
+
+  const handleClosePicker = useCallback(() => setPicker(null), [])
+  const handleOpenAvatarPicker = useCallback(() => setPicker('avatar'), [])
+  const handleOpenFramePicker = useCallback(() => setPicker('frame'), [])
+  const handleOpenTitlePicker = useCallback(() => setPicker('title'), [])
+
+  const handleSaveAvatar = useCallback(
+    async (avatar: AvatarKind) => {
+      await saveProfile({ avatar })
+    },
+    [saveProfile],
+  )
+
+  const handleSaveFrame = useCallback(
+    async (frame: FrameKind | null) => {
+      await saveProfile({ selectedFrame: frame })
+    },
+    [saveProfile],
+  )
+
+  const handleSaveTitle = useCallback(
+    async (title: string | null) => {
+      await saveProfile({ selectedTitle: title })
     },
     [saveProfile],
   )
@@ -266,6 +303,7 @@ function App() {
   // Un visiteur (user === null) tombe dans le rendu principal comme un
   // connecté. Les restrictions vivent au niveau des actions, via requireAuth.
   const isVisitor = user === null
+  const trophyIds = trophies.map((t) => t.id)
 
   const now = Date.now()
 
@@ -298,6 +336,7 @@ function App() {
         isVisitor={isVisitor}
         onOpenAuth={handleOpenAuth}
         profile={profile}
+        userId={user?.uid}
         onOpenOwnProfile={user ? () => handleOpenProfile(user.uid) : undefined}
       />
 
@@ -371,6 +410,7 @@ function App() {
           revealedPronos={revealedPronos}
           currentUserId={user.uid}
           currentUserPseudo={profile.pseudo}
+          currentUserProfile={profile}
           friendProfiles={friendProfiles}
           onOpenProfile={handleOpenProfile}
           onClose={handleCloseLeagueDetail}
@@ -404,6 +444,9 @@ function App() {
           userId={viewingProfileUid}
           currentUserId={user.uid}
           onEdit={handleOpenEditProfile}
+          onOpenAvatarPicker={handleOpenAvatarPicker}
+          onOpenFramePicker={handleOpenFramePicker}
+          onOpenTitlePicker={handleOpenTitlePicker}
           onClose={handleCloseProfile}
         />
       )}
@@ -415,6 +458,36 @@ function App() {
           onClose={handleCloseEditProfile}
         />
       )}
+
+      {picker === 'avatar' && user && profile && (
+        <AvatarPickerModal
+          profile={profile}
+          userId={user.uid}
+          trophyIds={trophyIds}
+          onSave={handleSaveAvatar}
+          onClose={handleClosePicker}
+        />
+      )}
+
+      {picker === 'frame' && profile && (
+        <FramePickerModal
+          profile={profile}
+          trophyIds={trophyIds}
+          onSave={handleSaveFrame}
+          onClose={handleClosePicker}
+        />
+      )}
+
+      {picker === 'title' && profile && (
+        <TitlePickerModal
+          profile={profile}
+          trophyIds={trophyIds}
+          onSave={handleSaveTitle}
+          onClose={handleClosePicker}
+        />
+      )}
+
+      <TrophyToast trophy={currentToast} onDismiss={dismissToast} />
     </>
   )
 }

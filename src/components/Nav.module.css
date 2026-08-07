@@ -202,6 +202,15 @@
   font-weight: 500;
 }
 
+.userTitle {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 2px;
+}
+
 .points {
   font-family: var(--font-mono);
   font-size: 11px;

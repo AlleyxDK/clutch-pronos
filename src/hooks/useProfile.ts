@@ -1,16 +1,25 @@
 import { useCallback, useEffect, useState } from 'react'
-import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
+import { deleteField, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
 import type { FieldValue } from 'firebase/firestore'
-import type { Profile } from '../lib/types'
+import type { AvatarKind, FrameKind, Profile } from '../lib/types'
 import { db } from '../lib/firebase'
 
-// Champs modifiables d'un profil. createdAt est géré par le hook, jamais
-// par l'appelant.
+/*
+ * Champs modifiables d'un profil. createdAt est géré par le hook, jamais par
+ * l'appelant. `null` signifie « efface ce champ » : Firestore rejette
+ * `undefined`, il faut passer par deleteField(). C'est ce qui permet de
+ * revenir au cadre automatique ou de retirer son titre.
+ */
 export interface ProfileUpdate {
   pseudo?: string
   currentStreak?: number
   longestStreak?: number
+  avatar?: AvatarKind
+  selectedFrame?: FrameKind | null
+  selectedTitle?: string | null
 }
+
+const NULLABLE_FIELDS = ['selectedFrame', 'selectedTitle'] as const
 
 export function useProfile(userId: string | null) {
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -38,6 +47,9 @@ export function useProfile(userId: string | null) {
             createdAt: data.createdAt?.toMillis() ?? Date.now(),
             currentStreak: data.currentStreak,
             longestStreak: data.longestStreak,
+            avatar: data.avatar,
+            selectedFrame: data.selectedFrame,
+            selectedTitle: data.selectedTitle,
           })
         }
 
@@ -74,9 +86,16 @@ export function useProfile(userId: string | null) {
        * permanence le réécrirait à chaque appel, et donc remettrait la date de
        * création à zéro au premier renommage de pseudo.
        */
-      const payload: ProfileUpdate & { createdAt?: FieldValue } = { ...update }
+      const payload: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(update)) {
+        if (value === undefined) continue
+        // null → suppression du champ, plutôt qu'une valeur null en base.
+        const nullable = (NULLABLE_FIELDS as readonly string[]).includes(key)
+        payload[key] = value === null && nullable ? deleteField() : value
+      }
+
       if (profile === null) {
-        payload.createdAt = serverTimestamp()
+        payload.createdAt = serverTimestamp() satisfies FieldValue
       }
 
       await setDoc(doc(db, 'users', userId, 'profile', 'main'), payload, { merge: true })

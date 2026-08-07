@@ -146,19 +146,24 @@
   gap: 10px;
 }
 
-.avatar {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  border-radius: 50%;
+/* Le disque à initiales vit désormais dans Avatar.module.css ; il ne reste
+   ici que l'empilement pseudo + titre. */
+.identity {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--accent), var(--danger));
-  color: var(--bg);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 12px;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.memberTitle {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pseudo {

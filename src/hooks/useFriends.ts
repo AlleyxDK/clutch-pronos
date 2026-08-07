@@ -48,6 +48,9 @@ export function useFriends(myUserId: string | null, leagues: League[]) {
             createdAt: data.createdAt?.toMillis() ?? Date.now(),
             currentStreak: data.currentStreak,
             longestStreak: data.longestStreak,
+            avatar: data.avatar,
+            selectedFrame: data.selectedFrame,
+            selectedTitle: data.selectedTitle,
           }
           return [id, profile] as const
         } catch (error) {

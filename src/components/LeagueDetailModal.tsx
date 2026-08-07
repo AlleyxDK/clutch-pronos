@@ -2,10 +2,10 @@ import type { ReactNode } from 'react'
 import type { League, Match, Profile, Prono } from '../lib/types'
 import type { RevealedPronoState } from '../hooks/useRevealedPronos'
 import { calculatePoints } from '../lib/points'
-import { pseudoInitials } from '../lib/initials'
 import { matchInLeague } from '../lib/leagueCompetitions'
-import { computeStreak, streakLevel } from '../lib/streak'
+import { effectiveFrame } from '../lib/frames'
 import Modal from './Modal'
+import Avatar from './Avatar'
 import AvatarFrame from './AvatarFrame'
 import styles from './LeagueDetailModal.module.css'
 
@@ -16,6 +16,7 @@ interface LeagueDetailModalProps {
   revealedPronos: Record<string, RevealedPronoState>
   currentUserId: string
   currentUserPseudo: string
+  currentUserProfile: Profile | null
   friendProfiles: Record<string, Profile>
   onOpenProfile: (uid: string) => void
   onClose: () => void
@@ -39,13 +40,11 @@ function LeagueDetailModal({
   revealedPronos,
   currentUserId,
   currentUserPseudo,
+  currentUserProfile,
   friendProfiles,
   onOpenProfile,
   onClose,
 }: LeagueDetailModalProps) {
-  // `pronos` sont ceux du joueur courant : le streak calculé ici est le sien.
-  const myStreak = computeStreak(matches, pronos).current
-
   const computeMemberStats = (userId: string): MemberStats => {
     let total = 0
     let correctWinners = 0
@@ -101,10 +100,15 @@ function LeagueDetailModal({
   }
 
   const rows = league.memberIds.map((uid) => {
-    const pseudo =
-      uid === currentUserId ? currentUserPseudo : (friendProfiles[uid]?.pseudo ?? 'Chargement…')
+    const isCurrentUser = uid === currentUserId
+    // useFriends charge le profil complet des membres des ligues du joueur :
+    // avatar, cadre et titre des autres sont donc disponibles ici.
+    const memberProfile = isCurrentUser ? currentUserProfile : (friendProfiles[uid] ?? null)
+    const pseudo = isCurrentUser
+      ? currentUserPseudo
+      : (friendProfiles[uid]?.pseudo ?? 'Chargement…')
     const stats = computeMemberStats(uid)
-    return { uid, pseudo, ...stats, isCurrentUser: uid === currentUserId }
+    return { uid, pseudo, profile: memberProfile, ...stats, isCurrentUser }
   })
   rows.sort((a, b) => b.total - a.total || a.pseudo.localeCompare(b.pseudo))
 
@@ -200,16 +204,21 @@ function LeagueDetailModal({
             </span>
 
             <span className={`${styles.colPlayer} ${styles.player}`}>
-              {/* TODO E2 : afficher les frames des autres membres. On n'a que
-                  notre propre streak sous la main (calculé sur nos pronos) ;
-                  celui des autres demanderait un fetch de leurs profils. */}
-              <AvatarFrame
-                size="sm"
-                level={row.isCurrentUser ? streakLevel(myStreak) : 'none'}
-              >
-                <span className={styles.avatar}>{pseudoInitials(row.pseudo)}</span>
+              <AvatarFrame size="sm" level={effectiveFrame(row.profile)}>
+                <Avatar
+                  profile={row.profile}
+                  size={32}
+                  fallbackPseudo={row.pseudo}
+                  fallbackSeed={row.uid}
+                />
               </AvatarFrame>
-              <span className={styles.pseudo}>{row.pseudo}</span>
+
+              <span className={styles.identity}>
+                <span className={styles.pseudo}>{row.pseudo}</span>
+                {row.profile?.selectedTitle !== undefined && (
+                  <span className={styles.memberTitle}>{row.profile.selectedTitle}</span>
+                )}
+              </span>
 
               {row.hasErrors ? (
                 <span

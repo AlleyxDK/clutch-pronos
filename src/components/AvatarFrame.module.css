@@ -73,6 +73,86 @@
   }
 }
 
+/* ---- Cadres de trophées ---- */
+/* Même empreinte visuelle que les cadres de streak : bordure + padding, pour
+   que le passage de l'un à l'autre ne fasse pas sauter la mise en page. */
+
+.levelPrecision {
+  border: var(--frame-border) solid #ff6b2c;
+  padding: var(--frame-pad);
+  /* La fine ligne pointillée intérieure passe par un outline négatif plutôt
+     qu'un pseudo-élément : le wrapper doit rester un simple inline-flex. */
+  outline: 1px dashed rgba(255, 107, 44, 0.55);
+  outline-offset: -4px;
+}
+
+.levelMvp {
+  position: relative;
+  border: calc(var(--frame-border) + 1px) solid #ffb100;
+  padding: var(--frame-pad);
+}
+
+/* Petite couronne dorée en overlay bas */
+.levelMvp::after {
+  content: '👑';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.levelStreak {
+  border: var(--frame-border) solid transparent;
+  padding: var(--frame-pad);
+  /* Bordure dégradée : le premier calque peint l'intérieur, le second la
+     bordure elle-même via background-origin. */
+  background:
+    linear-gradient(var(--surface-1), var(--surface-1)) padding-box,
+    linear-gradient(135deg, #ffeb3b, #ff6b2c) border-box;
+}
+
+.levelLoyalty {
+  border: var(--frame-border) solid #4ade80;
+  padding: var(--frame-pad);
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
+}
+
+.levelLec {
+  border: var(--frame-border) solid #1e5fce;
+  padding: var(--frame-pad);
+}
+
+.levelLck {
+  border: var(--frame-border) solid #e2013a;
+  padding: var(--frame-pad);
+}
+
+.levelEwc {
+  border: var(--frame-border) solid transparent;
+  padding: var(--frame-pad);
+  background:
+    linear-gradient(var(--surface-1), var(--surface-1)) padding-box,
+    linear-gradient(135deg, #c89b3c, #ffb100) border-box;
+}
+
+.levelUnderdog {
+  border: var(--frame-border) solid #9b59b6;
+  padding: var(--frame-pad);
+  /* Effet « outline » décalé : un second anneau violet plus pâle en retrait. */
+  box-shadow: 2px 2px 0 rgba(155, 89, 182, 0.45);
+}
+
+/* Pas encore attribuable : aucun trophée de catégorie season n'existe.
+   Le style est là pour que le type reste exhaustif. */
+.levelSeason {
+  border: calc(var(--frame-border) + 1px) solid #f5f1e8;
+  padding: var(--frame-pad);
+  box-shadow: 0 0 10px rgba(245, 241, 232, 0.35);
+}
+
 /* Ajout hors spec: respect de prefers-reduced-motion. L'animation tourne en
    permanence dans la nav ; la couper est la bonne valeur par défaut pour les
    utilisateurs qui la désactivent au niveau système. */
