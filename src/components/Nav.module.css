@@ -44,6 +44,66 @@
   color: var(--accent);
 }
 
+/* ---- Bascule de vue ---- */
+
+.views {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.viewLink {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-2);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.viewLink:hover {
+  color: var(--text-1);
+}
+
+.viewLinkActive,
+.viewLinkActive:hover {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* En grand écran, l'icône est redondante avec le libellé. */
+.viewIcon {
+  display: none;
+  font-size: 16px;
+  line-height: 1;
+}
+
+@media (max-width: 700px) {
+  .viewIcon {
+    display: inline;
+  }
+
+  .viewLabel {
+    /* Retiré visuellement, conservé pour les lecteurs d'écran. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
 /* ---- Bloc de droite ---- */
 
 /* Ajout hors spec: conteneur nécessaire pour aligner le bouton seed et la

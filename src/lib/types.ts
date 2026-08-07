@@ -54,6 +54,24 @@ export type FrameKind =
   | 'trophy-loyalty' | 'trophy-lec' | 'trophy-lck' | 'trophy-ewc'
   | 'trophy-underdog' | 'trophy-season';
 
+export interface StatEntry {
+  total: number;
+  correctWinners: number;
+  exactScores: number;
+  mvpBonuses: number;
+  pronoCount: number; // nb total de pronos (pas seulement les corrects)
+}
+
+export interface UserStats {
+  overall: StatEntry;
+  byCompetition: {
+    lec?: StatEntry;
+    lck?: StatEntry;
+    ewc?: StatEntry;
+  };
+  lastComputedAt: number; // ms — pour afficher un signal de fraîcheur
+}
+
 export interface Trophy {
   id: string;          // 'first-exact', 'ten-exacts', etc.
   unlockedAt: number;  // ms epoch
@@ -68,6 +86,7 @@ export interface Profile {
   avatar?: AvatarKind;       // undefined = fallback dicebear par uid
   selectedFrame?: FrameKind; // undefined = auto selon streak
   selectedTitle?: string;    // titre textuel sous le pseudo
+  stats?: UserStats;         // agrégats dénormalisés, pour le classement global
 }
 
 export interface Prono {

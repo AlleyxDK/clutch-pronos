@@ -13,6 +13,7 @@ import type { AvatarKind, FrameKind, League, Prono } from './lib/types'
 import { db } from './lib/firebase'
 import { isMatchLocked, isMatchResulted, heroWindowMs } from './lib/matchStatus'
 import { computeStreak } from './lib/streak'
+import { computeUserStats, userStatsEquals } from './lib/userStats'
 import { useAuth } from './hooks/useAuth'
 import { useProfile } from './hooks/useProfile'
 import { usePronos } from './hooks/usePronos'
@@ -41,6 +42,7 @@ import AvatarPickerModal from './components/AvatarPickerModal'
 import FramePickerModal from './components/FramePickerModal'
 import TitlePickerModal from './components/TitlePickerModal'
 import TrophyToast from './components/TrophyToast'
+import GlobalLeaderboardView from './components/GlobalLeaderboardView'
 import ConversionBanner from './components/ConversionBanner'
 import ConvertAccountModal from './components/ConvertAccountModal'
 import SplashScreen from './components/SplashScreen'
@@ -84,6 +86,26 @@ function App() {
   const [viewingProfileUid, setViewingProfileUid] = useState<string | null>(null)
   const [editingProfile, setEditingProfile] = useState(false)
   const [picker, setPicker] = useState<'avatar' | 'frame' | 'title' | null>(null)
+  const [currentView, setCurrentView] = useState<'home' | 'global'>('home')
+
+  /*
+   * Réconciliation des stats. Même principe que le streak : la source de vérité
+   * reste le calcul local, mais les agrégats sont dénormalisés dans le profil
+   * pour que le classement global n'ait pas à lire les pronos de chacun.
+   */
+  useEffect(() => {
+    if (!user || !profile) return
+    if (matches.length === 0) return
+
+    const newStats = computeUserStats(matches, pronos)
+
+    // userStatsEquals compare champ par champ et ignore lastComputedAt.
+    if (!userStatsEquals(newStats, profile.stats)) {
+      saveProfile({ stats: newStats }).catch((err) =>
+        console.error('Stats update failed:', err),
+      )
+    }
+  }, [matches, pronos, user, profile, saveProfile])
 
   /*
    * Réconciliation du streak. Le streak vit dans Firestore pour être lisible
@@ -138,6 +160,11 @@ function App() {
     },
     [saveProfile],
   )
+
+  const handleViewChange = useCallback((view: 'home' | 'global') => {
+    setCurrentView(view)
+    window.scrollTo(0, 0)
+  }, [])
 
   const handleClosePicker = useCallback(() => setPicker(null), [])
   const handleOpenAvatarPicker = useCallback(() => setPicker('avatar'), [])
@@ -338,44 +365,55 @@ function App() {
         profile={profile}
         userId={user?.uid}
         onOpenOwnProfile={user ? () => handleOpenProfile(user.uid) : undefined}
+        currentView={currentView}
+        onViewChange={handleViewChange}
       />
 
-      {/* Le hero se masque quand il n'y a ni match à venir ni match en cours. */}
-      {heroMatch && (
-        <Hero
-          match={heroMatch}
-          existingProno={pronos[heroMatch.id] ?? null}
-          onPronoClick={handleOpenProno}
-          revealedPronos={revealedPronos}
-          friendProfiles={friendProfiles}
-          isVisitor={isVisitor}
-          onOpenAuth={handleOpenAuth}
-        />
-      )}
+      {currentView === 'home' ? (
+        <>
+          {/* Le hero se masque quand il n'y a ni match à venir ni match en cours. */}
+          {heroMatch && (
+            <Hero
+              match={heroMatch}
+              existingProno={pronos[heroMatch.id] ?? null}
+              onPronoClick={handleOpenProno}
+              revealedPronos={revealedPronos}
+              friendProfiles={friendProfiles}
+              isVisitor={isVisitor}
+              onOpenAuth={handleOpenAuth}
+            />
+          )}
 
-      {user && (
-        <LeaguesSection
-          leagues={leagues}
-          onCreate={handleOpenCreate}
-          onJoin={handleOpenJoin}
-          onOpenDetail={handleOpenLeagueDetail}
+          {user && (
+            <LeaguesSection
+              leagues={leagues}
+              onCreate={handleOpenCreate}
+              onJoin={handleOpenJoin}
+              onOpenDetail={handleOpenLeagueDetail}
+            />
+          )}
+          <MatchesSection
+            matches={matches}
+            pronos={pronos}
+            onPronoClick={handleOpenProno}
+            revealedPronos={revealedPronos}
+            friendProfiles={friendProfiles}
+            onOpenResult={handleOpenResult}
+          />
+          <ResultsSection
+            matches={matches}
+            pronos={pronos}
+            revealedPronos={revealedPronos}
+            friendProfiles={friendProfiles}
+            onOpenResult={handleOpenResult}
+          />
+        </>
+      ) : (
+        <GlobalLeaderboardView
+          currentUserId={user?.uid ?? null}
+          onOpenProfile={user ? handleOpenProfile : undefined}
         />
       )}
-      <MatchesSection
-        matches={matches}
-        pronos={pronos}
-        onPronoClick={handleOpenProno}
-        revealedPronos={revealedPronos}
-        friendProfiles={friendProfiles}
-        onOpenResult={handleOpenResult}
-      />
-      <ResultsSection
-        matches={matches}
-        pronos={pronos}
-        revealedPronos={revealedPronos}
-        friendProfiles={friendProfiles}
-        onOpenResult={handleOpenResult}
-      />
 
       {pronoingMatch && (
         <PronoModal

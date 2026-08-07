@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { deleteField, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
 import type { FieldValue } from 'firebase/firestore'
-import type { AvatarKind, FrameKind, Profile } from '../lib/types'
+import type { AvatarKind, FrameKind, Profile, UserStats } from '../lib/types'
 import { db } from '../lib/firebase'
 
 /*
@@ -17,6 +17,7 @@ export interface ProfileUpdate {
   avatar?: AvatarKind
   selectedFrame?: FrameKind | null
   selectedTitle?: string | null
+  stats?: UserStats
 }
 
 const NULLABLE_FIELDS = ['selectedFrame', 'selectedTitle'] as const
@@ -50,6 +51,7 @@ export function useProfile(userId: string | null) {
             avatar: data.avatar,
             selectedFrame: data.selectedFrame,
             selectedTitle: data.selectedTitle,
+            stats: data.stats,
           })
         }
 

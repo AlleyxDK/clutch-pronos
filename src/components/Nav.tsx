@@ -20,6 +20,8 @@ interface NavProps {
   // Graine de repli pour l'avatar procédural des profils sans champ `avatar`.
   userId?: string
   onOpenOwnProfile?: () => void
+  currentView: 'home' | 'global'
+  onViewChange: (view: 'home' | 'global') => void
 }
 
 function Nav({
@@ -32,6 +34,8 @@ function Nav({
   profile,
   userId,
   onOpenOwnProfile,
+  currentView,
+  onViewChange,
 }: NavProps) {
   const totalPoints = useMemo(() => {
     let sum = 0
@@ -72,6 +76,33 @@ function Nav({
           <span className={styles.wordmark}>
             Clutch<span className={styles.dot}>.</span>
           </span>
+        </div>
+
+        <div className={styles.views}>
+          <button
+            type="button"
+            className={`${styles.viewLink} ${currentView === 'home' ? styles.viewLinkActive : ''}`}
+            onClick={() => onViewChange('home')}
+            aria-current={currentView === 'home' ? 'page' : undefined}
+          >
+            {/* Le libellé bascule en icône sous 700px, via CSS. */}
+            <span className={styles.viewIcon} aria-hidden="true">
+              🏠
+            </span>
+            <span className={styles.viewLabel}>Accueil</span>
+          </button>
+
+          <button
+            type="button"
+            className={`${styles.viewLink} ${currentView === 'global' ? styles.viewLinkActive : ''}`}
+            onClick={() => onViewChange('global')}
+            aria-current={currentView === 'global' ? 'page' : undefined}
+          >
+            <span className={styles.viewIcon} aria-hidden="true">
+              🏆
+            </span>
+            <span className={styles.viewLabel}>Clutch Global</span>
+          </button>
         </div>
 
         <div className={styles.right}>
