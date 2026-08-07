@@ -105,6 +105,9 @@ function MatchCard({
             {total > 0 && <ResultShare count={agg.mvpCounts[result.mvp] ?? 0} total={total} />}
           </>
         )}
+
+        {/* D'où vient le score : évite qu'on croie à une saisie humaine. */}
+        {result.autoResolved && <span className={styles.resultSource}>Source : PandaScore</span>}
       </div>
     )
   }

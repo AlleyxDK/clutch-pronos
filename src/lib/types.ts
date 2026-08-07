@@ -40,6 +40,7 @@ export interface MatchResult {
   mvp: string;               // même format que Prono.mvp
   submittedAt: number;       // ms epoch
   aggregates: MatchAggregates;
+  autoResolved?: boolean;    // true si posé automatiquement depuis PandaScore
 }
 
 export type AvatarKind =

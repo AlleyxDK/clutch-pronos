@@ -96,6 +96,11 @@ function MatchHero({
                   )}
                 </>
               )}
+
+              {/* D'où vient le score : évite qu'on croie à une saisie humaine. */}
+              {match.result.autoResolved && (
+                <span className={styles.resultSource}>Source : PandaScore</span>
+              )}
             </div>
           ) : (
             <>

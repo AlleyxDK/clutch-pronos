@@ -26,6 +26,7 @@ function toMatch(id: string, data: DocumentData): Match {
           score: data.result.score,
           mvp: data.result.mvp,
           submittedAt: data.result.submittedAt?.toMillis() ?? Date.now(),
+          autoResolved: data.result.autoResolved === true,
           aggregates: {
             scoreCounts: data.result.aggregates?.scoreCounts ?? {},
             mvpCounts: data.result.aggregates?.mvpCounts ?? {},

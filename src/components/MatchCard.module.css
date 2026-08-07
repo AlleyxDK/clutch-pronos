@@ -156,6 +156,19 @@
   text-overflow: ellipsis;
 }
 
+.resultSource {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  opacity: 0.7;
+  text-align: center;
+  white-space: nowrap;
+}
+
 /* ---- Pied de carte ---- */
 
 .status {

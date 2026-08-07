@@ -4,7 +4,7 @@
 require('dotenv').config({ path: __dirname + '/.env' });
 
 const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore, Timestamp, FieldPath } = require('firebase-admin/firestore');
+const { getFirestore, Timestamp, FieldPath, FieldValue } = require('firebase-admin/firestore');
 
 // Charge le service account : env var (CI) ou fichier local (dev).
 let serviceAccount;
@@ -107,6 +107,110 @@ async function transformMatch(m) {
   };
 }
 
+/*
+ * Pose automatiquement le résultat des matches déjà en base que PandaScore
+ * déclare terminés. Ne touche jamais un match qui a déjà un `result` : une
+ * saisie manuelle d'admin fait toujours foi.
+ */
+async function autoResolvePastMatches(pastMatches) {
+  let resolvedCount = 0;
+  let skippedExisting = 0;
+  let skippedNoResult = 0;
+  let skippedNotInBase = 0;
+  const batch = db.batch();
+
+  for (const m of pastMatches) {
+    const docId = `pandascore-${m.id}`;
+    const ref = db.collection('matches').doc(docId);
+    const snap = await ref.get();
+
+    // Le match doit exister dans notre base (donc dans un circuit qu'on suit).
+    if (!snap.exists) {
+      skippedNotInBase++;
+      continue;
+    }
+
+    const existing = snap.data();
+
+    // Ne jamais écraser un résultat déjà saisi (manuel ou automatique).
+    if (existing.result) {
+      skippedExisting++;
+      continue;
+    }
+
+    // PandaScore doit avoir un vainqueur et des scores.
+    if (!m.winner_id || !Array.isArray(m.results) || m.results.length < 2) {
+      skippedNoResult++;
+      continue;
+    }
+
+    // Mapper le vainqueur PandaScore sur team_a ou team_b.
+    // Notre convention : les ids d'équipe sont préfixés 'panda-' + id PandaScore.
+    const winnerTeamId = `panda-${m.winner_id}`;
+    let winnerSide = null;
+    if (existing.team_a?.id === winnerTeamId) winnerSide = 'a';
+    else if (existing.team_b?.id === winnerTeamId) winnerSide = 'b';
+
+    if (!winnerSide) {
+      console.warn(`   ⚠️ ${docId}: winner_id ${m.winner_id} ne matche aucune équipe stockée.`);
+      continue;
+    }
+
+    // Extraire les scores. results est un array [{team_id, score}, ...].
+    const winnerResult = m.results.find(r => `panda-${r.team_id}` === winnerTeamId);
+    const loserResult = m.results.find(r => `panda-${r.team_id}` !== winnerTeamId);
+    if (!winnerResult || !loserResult) {
+      skippedNoResult++;
+      continue;
+    }
+
+    const winnerGames = winnerResult.score ?? 0;
+    const loserGames = loserResult.score ?? 0;
+
+    // Format de score attendu : 'a-2-1', 'b-3-0', etc.
+    const scoreKey = `${winnerSide}-${winnerGames}-${loserGames}`;
+
+    // Agrégats des pronos existants sur ce match, même requête que
+    // handleSubmitResult côté client.
+    const pronosSnap = await db.collectionGroup('pronos')
+      .where('matchId', '==', docId)
+      .get();
+
+    const scoreCounts = {};
+    const mvpCounts = {};
+    let totalPronos = 0;
+    for (const pronoDoc of pronosSnap.docs) {
+      const p = pronoDoc.data();
+      totalPronos++;
+      scoreCounts[p.score] = (scoreCounts[p.score] ?? 0) + 1;
+      if (p.mvp) mvpCounts[p.mvp] = (mvpCounts[p.mvp] ?? 0) + 1;
+    }
+
+    const result = {
+      score: scoreKey,
+      mvp: '',                       // pas de MVP officiel dans le tier gratuit
+      submittedAt: FieldValue.serverTimestamp(),
+      autoResolved: true,            // marqueur : ce résultat vient de PandaScore
+      aggregates: {
+        scoreCounts,
+        mvpCounts,
+        totalPronos,
+      },
+    };
+
+    batch.update(ref, { result });
+    resolvedCount++;
+  }
+
+  if (resolvedCount > 0) {
+    await batch.commit();
+    console.log(`   ✅ Auto-résolu ${resolvedCount} matches.`);
+  }
+  if (skippedExisting > 0) console.log(`   ⏭️  ${skippedExisting} déjà résolus.`);
+  if (skippedNoResult > 0) console.log(`   ⏭️  ${skippedNoResult} sans résultat côté PandaScore.`);
+  if (skippedNotInBase > 0) console.log(`   ⏭️  ${skippedNotInBase} pas dans notre base.`);
+}
+
 async function main() {
   console.log('🧹 Nettoyage des matches PandaScore obsolètes...');
 
@@ -166,6 +270,36 @@ async function main() {
   // Stats de filtrage
   const stats = { noComp: 0, tooFewOpponents: 0, noScheduledAt: 0, kept: 0 };
   // ─── FIN DIAG TEMPORAIRE ───
+
+  /*
+   * Placé ici volontairement : plus bas, main() sort en avance si aucun match
+   * upcoming n'est retenu, et l'auto-résolution ne tournerait jamais un jour
+   * sans match à venir.
+   */
+  console.log('📡 Fetch des matches passés récents...');
+  const pastRes = await fetch(
+    `${PANDA_BASE}/lol/matches/past?per_page=50&sort=-scheduled_at`,
+    { headers: AUTH_HEADER }
+  );
+  if (!pastRes.ok) {
+    console.warn(`   ⚠️ Fetch past échoué (${pastRes.status}), on continue sans.`);
+  } else {
+    const rawPast = await pastRes.json();
+    console.log(`   Reçu ${rawPast.length} matches passés bruts.`);
+
+    // On ne garde que ceux dans les 7 derniers jours (pour éviter de traiter
+    // des matches très anciens à chaque run).
+    const nowMs = Date.now();
+    const sevenDaysAgo = nowMs - 7 * 24 * 3600 * 1000;
+    const recentPast = rawPast.filter(m => {
+      if (!m.scheduled_at) return false;
+      const scheduledMs = new Date(m.scheduled_at).getTime();
+      return scheduledMs >= sevenDaysAgo && scheduledMs <= nowMs;
+    });
+    console.log(`   ${recentPast.length} matches passés dans les 7 derniers jours.`);
+
+    await autoResolvePastMatches(recentPast);
+  }
 
   console.log('🔄 Filtrage et transformation...');
   const transformed = [];
