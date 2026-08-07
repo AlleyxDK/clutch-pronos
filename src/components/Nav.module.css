@@ -142,6 +142,8 @@
 
 /* ---- Pastille utilisateur ---- */
 
+/* Ajout hors spec: c'est un <button> désormais (le pill entier ouvre le
+   profil), il faut donc neutraliser les styles natifs du bouton. */
 .pill {
   display: flex;
   align-items: center;
@@ -150,6 +152,28 @@
   background: var(--surface-1);
   border: 1px solid var(--border-subtle);
   border-radius: 100px;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s;
+}
+
+.pill:hover {
+  border-color: var(--border-warm);
+}
+
+.streakBadge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  padding: 2px 6px;
+  background: var(--accent-dim);
+  border-radius: 6px;
+  white-space: nowrap;
 }
 
 .avatar {

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import './styles/globals.css'
 import {
   collectionGroup,
@@ -12,6 +12,7 @@ import {
 import type { League, Prono } from './lib/types'
 import { db } from './lib/firebase'
 import { isMatchLocked, isMatchResulted, heroWindowMs } from './lib/matchStatus'
+import { computeStreak } from './lib/streak'
 import { useAuth } from './hooks/useAuth'
 import { useProfile } from './hooks/useProfile'
 import { usePronos } from './hooks/usePronos'
@@ -33,6 +34,8 @@ import JoinLeagueModal from './components/JoinLeagueModal'
 import LeagueDetailModal from './components/LeagueDetailModal'
 import Onboarding from './components/Onboarding'
 import AuthModal from './components/AuthModal'
+import ProfileModal from './components/ProfileModal'
+import EditProfileModal from './components/EditProfileModal'
 import ConversionBanner from './components/ConversionBanner'
 import ConvertAccountModal from './components/ConvertAccountModal'
 import SplashScreen from './components/SplashScreen'
@@ -68,6 +71,34 @@ function App() {
   const [showConvert, setShowConvert] = useState(false)
   // null = modale d'auth fermée ; string = ouverte avec le message contextuel.
   const [authModalContext, setAuthModalContext] = useState<string | null>(null)
+  const [viewingProfileUid, setViewingProfileUid] = useState<string | null>(null)
+  const [editingProfile, setEditingProfile] = useState(false)
+
+  /*
+   * Réconciliation du streak. Le streak vit dans Firestore pour être lisible
+   * par les autres joueurs, mais la source de vérité reste le calcul local sur
+   * matches + pronos. Cet effet réécrit le profil dès que les deux divergent.
+   * La garde d'égalité est ce qui empêche la boucle : la mise à jour change
+   * `profile`, l'effet retourne, et la seconde passe ne réécrit plus rien.
+   */
+  useEffect(() => {
+    if (!user || !profile) return
+    if (matches.length === 0) return
+
+    const { current, longest } = computeStreak(matches, pronos)
+    const storedCurrent = profile.currentStreak ?? 0
+    const storedLongest = profile.longestStreak ?? 0
+
+    // Le record ne redescend jamais, même si le streak courant est cassé.
+    const newLongest = Math.max(storedLongest, current, longest)
+
+    if (current !== storedCurrent || newLongest !== storedLongest) {
+      // Non bloquant : un échec d'écriture ne doit pas casser le rendu.
+      saveProfile({ currentStreak: current, longestStreak: newLongest }).catch((err) =>
+        console.error('Streak update failed:', err),
+      )
+    }
+  }, [matches, pronos, user, profile, saveProfile])
 
   // Toutes les actions réservées passent par ici : un visiteur déclenche la
   // modale d'inscription au lieu de l'action, plutôt qu'un écran de login global.
@@ -84,6 +115,18 @@ function App() {
 
   const handleOpenAuth = useCallback((context: string) => setAuthModalContext(context), [])
   const handleCloseAuth = useCallback(() => setAuthModalContext(null), [])
+
+  const handleOpenProfile = useCallback((uid: string) => setViewingProfileUid(uid), [])
+  const handleCloseProfile = useCallback(() => setViewingProfileUid(null), [])
+  const handleOpenEditProfile = useCallback(() => setEditingProfile(true), [])
+  const handleCloseEditProfile = useCallback(() => setEditingProfile(false), [])
+
+  const handleSavePseudo = useCallback(
+    async (newPseudo: string) => {
+      await saveProfile({ pseudo: newPseudo })
+    },
+    [saveProfile],
+  )
 
   const handleOpenProno = useCallback(
     (matchId: string) => {
@@ -216,7 +259,9 @@ function App() {
   if (matchesLoading) return <SplashScreen />
   if (user && profileLoading) return <SplashScreen />
   // Filet de sécurité : cas rare d'un user créé sans profil
-  if (user && !profile) return <Onboarding onSubmit={saveProfile} />
+  if (user && !profile) {
+    return <Onboarding onSubmit={(pseudo) => saveProfile({ pseudo })} />
+  }
 
   // Un visiteur (user === null) tombe dans le rendu principal comme un
   // connecté. Les restrictions vivent au niveau des actions, via requireAuth.
@@ -252,6 +297,8 @@ function App() {
         onSignOut={handleSignOut}
         isVisitor={isVisitor}
         onOpenAuth={handleOpenAuth}
+        profile={profile}
+        onOpenOwnProfile={user ? () => handleOpenProfile(user.uid) : undefined}
       />
 
       {/* Le hero se masque quand il n'y a ni match à venir ni match en cours. */}
@@ -325,6 +372,7 @@ function App() {
           currentUserId={user.uid}
           currentUserPseudo={profile.pseudo}
           friendProfiles={friendProfiles}
+          onOpenProfile={handleOpenProfile}
           onClose={handleCloseLeagueDetail}
         />
       )}
@@ -348,6 +396,23 @@ function App() {
           onSignUp={handleSignUp}
           onSendReset={handleSendReset}
           onClose={handleCloseAuth}
+        />
+      )}
+
+      {viewingProfileUid && user && (
+        <ProfileModal
+          userId={viewingProfileUid}
+          currentUserId={user.uid}
+          onEdit={handleOpenEditProfile}
+          onClose={handleCloseProfile}
+        />
+      )}
+
+      {editingProfile && profile && (
+        <EditProfileModal
+          currentPseudo={profile.pseudo}
+          onSave={handleSavePseudo}
+          onClose={handleCloseEditProfile}
         />
       )}
     </>

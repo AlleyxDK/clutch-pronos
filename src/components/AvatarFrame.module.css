@@ -1,0 +1,83 @@
+.frame {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 100px;
+  /* Le cadre grandit avec le padding et la bordure ; l'avatar enfant garde
+     sa taille propre. box-sizing: content-box évite qu'il soit rogné. */
+  box-sizing: content-box;
+}
+
+/* Les classes de taille ne changent pas l'avatar (il porte sa propre taille),
+   elles servent à graduer l'épaisseur perçue du cadre. */
+
+.sizeSm {
+  --frame-pad: 2px;
+  --frame-border: 2px;
+}
+
+.sizeMd {
+  --frame-pad: 2px;
+  --frame-border: 2px;
+}
+
+.sizeLg {
+  --frame-pad: 3px;
+  --frame-border: 3px;
+}
+
+/* ---- Niveaux ---- */
+
+.levelNone {
+  border: none;
+  padding: 0;
+}
+
+.levelBronze {
+  border: var(--frame-border) solid #a67c00;
+  padding: var(--frame-pad);
+}
+
+.levelSilver {
+  border: var(--frame-border) solid #c0c0c0;
+  padding: var(--frame-pad);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
+}
+
+.levelGold {
+  border: calc(var(--frame-border) + 1px) solid #ffb100;
+  padding: var(--frame-pad);
+  box-shadow: 0 0 8px rgba(255, 177, 0, 0.5);
+}
+
+/* Le niveau « fire » n'a pas de bordure : c'est le fond dégradé animé qui,
+   combiné au padding, fait office d'anneau. */
+.levelFire {
+  border: none;
+  padding: calc(var(--frame-pad) + 1px);
+  background: linear-gradient(45deg, #ff6b2c, #e63946, #ff6b2c);
+  background-size: 200% 200%;
+  animation: fire-shimmer 3s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(255, 107, 44, 0.6);
+}
+
+/* Les keyframes d'un CSS Module sont à portée locale. */
+@keyframes fire-shimmer {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Ajout hors spec: respect de prefers-reduced-motion. L'animation tourne en
+   permanence dans la nav ; la couper est la bonne valeur par défaut pour les
+   utilisateurs qui la désactivent au niveau système. */
+@media (prefers-reduced-motion: reduce) {
+  .levelFire {
+    animation: none;
+  }
+}

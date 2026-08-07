@@ -1,9 +1,11 @@
 import { useMemo } from 'react'
-import type { Match, Prono } from '../lib/types'
+import type { Match, Profile, Prono } from '../lib/types'
 import { seedMatchesToFirestore } from '../lib/seedMatches'
 import { pseudoInitials } from '../lib/initials'
 import { calculatePoints } from '../lib/points'
+import { computeStreak, streakLevel } from '../lib/streak'
 import { isAdmin } from '../lib/admin'
+import AvatarFrame from './AvatarFrame'
 import styles from './Nav.module.css'
 
 interface NavProps {
@@ -13,9 +15,20 @@ interface NavProps {
   onSignOut: () => void
   isVisitor?: boolean
   onOpenAuth?: (context: string) => void
+  profile?: Profile | null
+  onOpenOwnProfile?: () => void
 }
 
-function Nav({ pseudo, matches, pronos, onSignOut, isVisitor, onOpenAuth }: NavProps) {
+function Nav({
+  pseudo,
+  matches,
+  pronos,
+  onSignOut,
+  isVisitor,
+  onOpenAuth,
+  profile,
+  onOpenOwnProfile,
+}: NavProps) {
   const totalPoints = useMemo(() => {
     let sum = 0
     for (const match of matches) {
@@ -26,6 +39,16 @@ function Nav({ pseudo, matches, pronos, onSignOut, isVisitor, onOpenAuth }: NavP
     }
     return sum
   }, [matches, pronos])
+
+  // Le streak recalculé localement est plus frais que celui stocké, mais le
+  // stocké prend le relais tant que l'effect de réconciliation n'a pas tourné.
+  const displayStreak = useMemo(() => {
+    if (!profile) return 0
+    const { current } = computeStreak(matches, pronos)
+    return Math.max(current, profile.currentStreak ?? 0)
+  }, [matches, pronos, profile])
+
+  const level = streakLevel(displayStreak)
 
   const handleSeed = async () => {
     try {
@@ -72,13 +95,25 @@ function Nav({ pseudo, matches, pronos, onSignOut, isVisitor, onOpenAuth }: NavP
             </div>
           ) : (
             <>
-              <div className={styles.pill}>
-                <span className={styles.avatar}>{pseudoInitials(pseudo)}</span>
+              <button
+                type="button"
+                className={styles.pill}
+                onClick={onOpenOwnProfile}
+                aria-label="Voir mon profil"
+              >
+                <AvatarFrame size="sm" level={level}>
+                  <span className={styles.avatar}>{pseudoInitials(pseudo)}</span>
+                </AvatarFrame>
+
                 <span className={styles.identity}>
                   <span className={styles.username}>{pseudo}</span>
                   <span className={styles.points}>{totalPoints} pts</span>
                 </span>
-              </div>
+
+                {displayStreak > 0 && (
+                  <span className={styles.streakBadge}>🔥 {displayStreak}</span>
+                )}
+              </button>
 
               <button
                 type="button"

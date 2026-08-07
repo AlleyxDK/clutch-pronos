@@ -45,6 +45,9 @@ export interface MatchResult {
 export interface Profile {
   pseudo: string;
   createdAt: number; // ms epoch
+  // Optionnels : les profils créés avant l'arrivée des streaks ne les ont pas.
+  currentStreak?: number;
+  longestStreak?: number;
 }
 
 export interface Prono {

@@ -4,7 +4,9 @@ import type { RevealedPronoState } from '../hooks/useRevealedPronos'
 import { calculatePoints } from '../lib/points'
 import { pseudoInitials } from '../lib/initials'
 import { matchInLeague } from '../lib/leagueCompetitions'
+import { computeStreak, streakLevel } from '../lib/streak'
 import Modal from './Modal'
+import AvatarFrame from './AvatarFrame'
 import styles from './LeagueDetailModal.module.css'
 
 interface LeagueDetailModalProps {
@@ -15,6 +17,7 @@ interface LeagueDetailModalProps {
   currentUserId: string
   currentUserPseudo: string
   friendProfiles: Record<string, Profile>
+  onOpenProfile: (uid: string) => void
   onClose: () => void
 }
 
@@ -37,8 +40,12 @@ function LeagueDetailModal({
   currentUserId,
   currentUserPseudo,
   friendProfiles,
+  onOpenProfile,
   onClose,
 }: LeagueDetailModalProps) {
+  // `pronos` sont ceux du joueur courant : le streak calculé ici est le sien.
+  const myStreak = computeStreak(matches, pronos).current
+
   const computeMemberStats = (userId: string): MemberStats => {
     let total = 0
     let correctWinners = 0
@@ -175,7 +182,16 @@ function LeagueDetailModal({
         {rows.map((row, index) => (
           <div
             key={row.uid}
-            className={`${styles.row} ${row.isCurrentUser ? styles.rowMe : ''}`}
+            role="button"
+            tabIndex={0}
+            className={`${styles.row} ${styles.rowClickable} ${row.isCurrentUser ? styles.rowMe : ''}`}
+            onClick={() => onOpenProfile(row.uid)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onOpenProfile(row.uid)
+              }
+            }}
           >
             <span
               className={`${styles.colRank} ${styles.rank} ${row.isCurrentUser ? styles.rankMe : ''}`}
@@ -184,7 +200,15 @@ function LeagueDetailModal({
             </span>
 
             <span className={`${styles.colPlayer} ${styles.player}`}>
-              <span className={styles.avatar}>{pseudoInitials(row.pseudo)}</span>
+              {/* TODO E2 : afficher les frames des autres membres. On n'a que
+                  notre propre streak sous la main (calculé sur nos pronos) ;
+                  celui des autres demanderait un fetch de leurs profils. */}
+              <AvatarFrame
+                size="sm"
+                level={row.isCurrentUser ? streakLevel(myStreak) : 'none'}
+              >
+                <span className={styles.avatar}>{pseudoInitials(row.pseudo)}</span>
+              </AvatarFrame>
               <span className={styles.pseudo}>{row.pseudo}</span>
 
               {row.hasErrors ? (

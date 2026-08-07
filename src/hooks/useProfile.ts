@@ -4,6 +4,14 @@ import type { FieldValue } from 'firebase/firestore'
 import type { Profile } from '../lib/types'
 import { db } from '../lib/firebase'
 
+// Champs modifiables d'un profil. createdAt est géré par le hook, jamais
+// par l'appelant.
+export interface ProfileUpdate {
+  pseudo?: string
+  currentStreak?: number
+  longestStreak?: number
+}
+
 export function useProfile(userId: string | null) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(userId !== null)
@@ -28,6 +36,8 @@ export function useProfile(userId: string | null) {
           setProfile({
             pseudo: data.pseudo,
             createdAt: data.createdAt?.toMillis() ?? Date.now(),
+            currentStreak: data.currentStreak,
+            longestStreak: data.longestStreak,
           })
         }
 
@@ -46,19 +56,25 @@ export function useProfile(userId: string | null) {
     return () => unsubscribe()
   }, [userId])
 
+  /*
+   * Ajout hors spec: saveProfile prend désormais un update partiel plutôt
+   * qu'un pseudo. La réconciliation de streak doit pouvoir écrire currentStreak
+   * seul, sans avoir à renvoyer le pseudo — et surtout sans renvoyer createdAt,
+   * qui est un Timestamp Firestore côté serveur et un number côté client.
+   */
   const saveProfile = useCallback(
-    async (pseudo: string) => {
+    async (update: ProfileUpdate) => {
       if (userId === null) {
         throw new Error("useProfile: impossible d'écrire un profil sans utilisateur connecté")
       }
 
       /*
-       * Ajout hors spec: createdAt n'est envoyé que si le profil n'existe pas
-       * encore. merge: true ne préserve que les champs ABSENTS du payload : y
-       * laisser createdAt en permanence le réécrirait à chaque appel, et donc
-       * remettrait la date de création à zéro au premier renommage de pseudo.
+       * createdAt n'est envoyé que si le profil n'existe pas encore. merge: true
+       * ne préserve que les champs ABSENTS du payload : y laisser createdAt en
+       * permanence le réécrirait à chaque appel, et donc remettrait la date de
+       * création à zéro au premier renommage de pseudo.
        */
-      const payload: { pseudo: string; createdAt?: FieldValue } = { pseudo }
+      const payload: ProfileUpdate & { createdAt?: FieldValue } = { ...update }
       if (profile === null) {
         payload.createdAt = serverTimestamp()
       }
