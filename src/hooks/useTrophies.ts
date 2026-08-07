@@ -22,6 +22,8 @@ export function useTrophies(
   const writtenThisSession = useRef<Set<string>>(new Set())
   // Évite les doubles écritures pendant qu'un setDoc est encore en vol.
   const inFlight = useRef<Set<string>>(new Set())
+  // Signature du dernier état vérifié (matches résolus + pronos posés).
+  const resolvedSignatureRef = useRef<string>('')
 
   useEffect(() => {
     if (userId === null) {
@@ -60,6 +62,7 @@ export function useTrophies(
   useEffect(() => {
     writtenThisSession.current = new Set()
     inFlight.current = new Set()
+    resolvedSignatureRef.current = ''
     setToastQueue([])
   }, [userId])
 
@@ -67,6 +70,23 @@ export function useTrophies(
     if (userId === null) return
     if (loading) return
     if (matches.length === 0) return
+
+    /*
+     * Un trophée ne peut se débloquer que si un match a été résolu ou si un
+     * prono a été posé. Signer ces deux états évite de relancer checkTrophies
+     * à chaque re-render déclenché par le tick ou par une autre partie de l'app.
+     */
+    const resolvedMatchesSig = matches
+      .filter((m) => m.result)
+      .map((m) => `${m.id}:${m.result!.score}`)
+      .sort()
+      .join('|')
+
+    const pronoSig = Object.keys(pronos).sort().join('|')
+    const newSignature = `${resolvedMatchesSig}||${pronoSig}`
+
+    if (newSignature === resolvedSignatureRef.current) return
+    resolvedSignatureRef.current = newSignature
 
     const shouldHave = checkTrophies(matches, pronos)
     const owned = new Set(trophies.map((t) => t.id))

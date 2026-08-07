@@ -21,7 +21,6 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: 'ewc', label: 'EWC' },
 ]
 
-const PAGE_SIZE = 50
 const numberFormat = new Intl.NumberFormat('fr-FR')
 
 function GlobalLeaderboardView({
@@ -29,8 +28,7 @@ function GlobalLeaderboardView({
   onOpenProfile,
 }: GlobalLeaderboardViewProps) {
   const [filter, setFilter] = useState<Filter>('all')
-  const [limit, setLimit] = useState(PAGE_SIZE)
-  const { entries, loading, error } = useGlobalLeaderboard()
+  const { entries, loading, error, hasMore, loadMore, refresh } = useGlobalLeaderboard()
 
   // Sur un circuit donné, seuls les joueurs qui y ont pronostiqué sont classés.
   const ranked = entries
@@ -43,10 +41,10 @@ function GlobalLeaderboardView({
     )
 
   const myIndex = ranked.findIndex((row) => row.uid === currentUserId)
-  const visible = ranked.slice(0, limit)
+  const visible = ranked
 
   let intro: string
-  if (loading) {
+  if (loading && entries.length === 0) {
     intro = 'Chargement du classement…'
   } else if (currentUserId === null) {
     intro = 'Connecte-toi et fais ton premier prono pour rejoindre le classement.'
@@ -69,25 +67,33 @@ function GlobalLeaderboardView({
           </p>
         </div>
 
-        <div className={styles.filters}>
-          {FILTERS.map((option) => {
-            const active = filter === option.id
+        <div className={styles.controls}>
+          <div className={styles.filters}>
+            {FILTERS.map((option) => {
+              const active = filter === option.id
 
-            return (
-              <button
-                key={option.id}
-                type="button"
-                className={`${styles.chip} ${active ? styles.chipActive : ''}`}
-                onClick={() => {
-                  setFilter(option.id)
-                  setLimit(PAGE_SIZE)
-                }}
-                aria-pressed={active}
-              >
-                {option.label}
-              </button>
-            )
-          })}
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`${styles.chip} ${active ? styles.chipActive : ''}`}
+                  onClick={() => setFilter(option.id)}
+                  aria-pressed={active}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
+
+          <button
+            type="button"
+            className={styles.refresh}
+            disabled={loading}
+            onClick={() => void refresh()}
+          >
+            ↻ Actualiser
+          </button>
         </div>
 
         <p className={styles.intro}>{intro}</p>
@@ -175,13 +181,14 @@ function GlobalLeaderboardView({
               })}
             </div>
 
-            {ranked.length > limit && (
+            {hasMore && (
               <button
                 type="button"
                 className={styles.more}
-                onClick={() => setLimit((prev) => prev + PAGE_SIZE)}
+                disabled={loading}
+                onClick={() => void loadMore()}
               >
-                Voir plus
+                {loading ? 'Chargement…' : 'Voir plus'}
               </button>
             )}
           </>

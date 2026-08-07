@@ -25,12 +25,44 @@
 
 /* ---- Filtres ---- */
 
+.controls {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
 .filters {
   display: flex;
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 4px;
-  margin-bottom: 16px;
+  min-width: 0;
+}
+
+.refresh {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.refresh:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.refresh:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .chip {
@@ -221,9 +253,14 @@
   transition: all 0.15s;
 }
 
-.more:hover {
+.more:hover:not(:disabled) {
   background: var(--accent-dim);
   border-color: var(--accent);
+}
+
+.more:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Sur mobile, on sacrifie les colonnes secondaires plutôt que de laisser

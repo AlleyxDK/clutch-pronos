@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { deleteField, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
 import type { FieldValue } from 'firebase/firestore'
 import type { AvatarKind, FrameKind, Profile, UserStats } from '../lib/types'
@@ -22,9 +22,26 @@ export interface ProfileUpdate {
 
 const NULLABLE_FIELDS = ['selectedFrame', 'selectedTitle'] as const
 
+const DEBOUNCE_MS = 500
+
+interface PendingWrite {
+  timer: ReturnType<typeof setTimeout> | null
+  accumulated: ProfileUpdate
+  // Tous les appelants en attente de CE flush. Sans cette liste, un appel
+  // annulé par un appel suivant laisserait sa promesse pendante à jamais —
+  // et EditProfileModal, qui fait `await saveProfile(...)`, resterait bloqué
+  // sur « Enregistrement… ».
+  waiters: { resolve: () => void; reject: (reason: unknown) => void }[]
+}
+
 export function useProfile(userId: string | null) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(userId !== null)
+
+  const pendingRef = useRef<PendingWrite>({ timer: null, accumulated: {}, waiters: [] })
+  // Lu dans le callback différé : la valeur capturée à l'appel serait périmée.
+  const profileRef = useRef<Profile | null>(null)
+  profileRef.current = profile
 
   useEffect(() => {
     if (userId === null) {
@@ -76,33 +93,63 @@ export function useProfile(userId: string | null) {
    * seul, sans avoir à renvoyer le pseudo — et surtout sans renvoyer createdAt,
    * qui est un Timestamp Firestore côté serveur et un number côté client.
    */
+  /*
+   * Écriture débouncée à 500 ms. Les réconciliations de streak et de stats
+   * partent souvent dans le même cycle de rendu ; en accumulant le patch on
+   * fusionne ces rafales en un seul setDoc.
+   */
   const saveProfile = useCallback(
-    async (update: ProfileUpdate) => {
+    (update: ProfileUpdate) => {
       if (userId === null) {
-        throw new Error("useProfile: impossible d'écrire un profil sans utilisateur connecté")
+        return Promise.reject(
+          new Error("useProfile: impossible d'écrire un profil sans utilisateur connecté"),
+        )
       }
 
-      /*
-       * createdAt n'est envoyé que si le profil n'existe pas encore. merge: true
-       * ne préserve que les champs ABSENTS du payload : y laisser createdAt en
-       * permanence le réécrirait à chaque appel, et donc remettrait la date de
-       * création à zéro au premier renommage de pseudo.
-       */
-      const payload: Record<string, unknown> = {}
-      for (const [key, value] of Object.entries(update)) {
-        if (value === undefined) continue
-        // null → suppression du champ, plutôt qu'une valeur null en base.
-        const nullable = (NULLABLE_FIELDS as readonly string[]).includes(key)
-        payload[key] = value === null && nullable ? deleteField() : value
-      }
+      const pending = pendingRef.current
+      Object.assign(pending.accumulated, update)
 
-      if (profile === null) {
-        payload.createdAt = serverTimestamp() satisfies FieldValue
-      }
+      if (pending.timer) clearTimeout(pending.timer)
 
-      await setDoc(doc(db, 'users', userId, 'profile', 'main'), payload, { merge: true })
+      return new Promise<void>((resolve, reject) => {
+        pending.waiters.push({ resolve, reject })
+
+        pending.timer = setTimeout(async () => {
+          const patch = { ...pending.accumulated }
+          const waiters = pending.waiters
+
+          pending.accumulated = {}
+          pending.waiters = []
+          pending.timer = null
+
+          /*
+           * createdAt n'est envoyé que si le profil n'existe pas encore.
+           * merge: true ne préserve que les champs ABSENTS du payload : y
+           * laisser createdAt en permanence le réécrirait à chaque appel, et
+           * donc remettrait la date de création à zéro au premier renommage.
+           */
+          const payload: Record<string, unknown> = {}
+          for (const [key, value] of Object.entries(patch)) {
+            if (value === undefined) continue
+            // null → suppression du champ, plutôt qu'une valeur null en base.
+            const nullable = (NULLABLE_FIELDS as readonly string[]).includes(key)
+            payload[key] = value === null && nullable ? deleteField() : value
+          }
+
+          if (profileRef.current === null) {
+            payload.createdAt = serverTimestamp() satisfies FieldValue
+          }
+
+          try {
+            await setDoc(doc(db, 'users', userId, 'profile', 'main'), payload, { merge: true })
+            for (const waiter of waiters) waiter.resolve()
+          } catch (err) {
+            for (const waiter of waiters) waiter.reject(err)
+          }
+        }, DEBOUNCE_MS)
+      })
     },
-    [userId, profile],
+    [userId],
   )
 
   return { profile, loading, saveProfile }

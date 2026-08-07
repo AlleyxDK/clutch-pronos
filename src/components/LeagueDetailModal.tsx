@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import type { League, Match, Profile, Prono } from '../lib/types'
 import type { RevealedPronoState } from '../hooks/useRevealedPronos'
@@ -32,6 +33,17 @@ interface MemberStats {
 }
 
 const numberFormat = new Intl.NumberFormat('fr-FR')
+
+// Filet si un memberId n'est pas dans la map : ne devrait jamais arriver,
+// les deux dérivent de league.memberIds.
+const EMPTY_STATS: MemberStats = {
+  total: 0,
+  correctWinners: 0,
+  exactScores: 0,
+  mvpBonuses: 0,
+  hasErrors: false,
+  isPending: false,
+}
 
 function LeagueDetailModal({
   league,
@@ -99,6 +111,22 @@ function LeagueDetailModal({
     }
   }
 
+  /*
+   * computeMemberStats parcourt tous les matches ; l'appeler dans le .map des
+   * lignes le relançait pour chaque membre à chaque rendu. Un seul passage
+   * mémorisé suffit : la modale se re-rend au tick sans que rien ne change.
+   */
+  const memberStatsMap = useMemo(() => {
+    const map = new Map<string, MemberStats>()
+    for (const uid of league.memberIds) {
+      map.set(uid, computeMemberStats(uid))
+    }
+    return map
+    // computeMemberStats est redéfini à chaque rendu mais ne lit que ces
+    // valeurs ; les lister explicitement est plus juste que de le mémoriser.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [league, matches, pronos, revealedPronos, currentUserId])
+
   const rows = league.memberIds.map((uid) => {
     const isCurrentUser = uid === currentUserId
     // useFriends charge le profil complet des membres des ligues du joueur :
@@ -107,7 +135,7 @@ function LeagueDetailModal({
     const pseudo = isCurrentUser
       ? currentUserPseudo
       : (friendProfiles[uid]?.pseudo ?? 'Chargement…')
-    const stats = computeMemberStats(uid)
+    const stats = memberStatsMap.get(uid) ?? EMPTY_STATS
     return { uid, pseudo, profile: memberProfile, ...stats, isCurrentUser }
   })
   rows.sort((a, b) => b.total - a.total || a.pseudo.localeCompare(b.pseudo))

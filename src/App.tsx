@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import './styles/globals.css'
 import {
   collectionGroup,
@@ -67,9 +67,11 @@ function App() {
     dismissToast,
   } = useTrophies(user?.uid ?? null, matches, pronos)
 
-  // Re-rendu chaque seconde : c'est ce qui fait basculer les cartes en
+  // Re-rendu périodique : c'est ce qui fait basculer les cartes en
   // « verrouillé » au kick-off sans que l'utilisateur ait à interagir.
-  const tick = useTick(1000)
+  // 5 s et non 1 s : le décalage est imperceptible et divise par cinq les
+  // re-rendus de tout l'arbre. Countdown garde son propre timer à la seconde.
+  const tick = useTick(5000)
 
   const { friendIds, profiles: friendProfiles } = useFriends(user?.uid ?? null, leagues)
   const revealedPronos = useRevealedPronos(matches, friendIds, tick)
@@ -88,6 +90,12 @@ function App() {
   const [picker, setPicker] = useState<'avatar' | 'frame' | 'title' | null>(null)
   const [currentView, setCurrentView] = useState<'home' | 'global'>('home')
 
+  // Deux parcours complets de matches × pronos. Les mémoriser évite de les
+  // refaire à chaque tick, à chaque ouverture de modale, à chaque frappe.
+  const streakData = useMemo(() => computeStreak(matches, pronos), [matches, pronos])
+  const userStats = useMemo(() => computeUserStats(matches, pronos), [matches, pronos])
+  const matchById = useMemo(() => new Map(matches.map((m) => [m.id, m])), [matches])
+
   /*
    * Réconciliation des stats. Même principe que le streak : la source de vérité
    * reste le calcul local, mais les agrégats sont dénormalisés dans le profil
@@ -97,15 +105,13 @@ function App() {
     if (!user || !profile) return
     if (matches.length === 0) return
 
-    const newStats = computeUserStats(matches, pronos)
-
     // userStatsEquals compare champ par champ et ignore lastComputedAt.
-    if (!userStatsEquals(newStats, profile.stats)) {
-      saveProfile({ stats: newStats }).catch((err) =>
+    if (!userStatsEquals(userStats, profile.stats)) {
+      saveProfile({ stats: userStats }).catch((err) =>
         console.error('Stats update failed:', err),
       )
     }
-  }, [matches, pronos, user, profile, saveProfile])
+  }, [matches.length, userStats, user, profile, saveProfile])
 
   /*
    * Réconciliation du streak. Le streak vit dans Firestore pour être lisible
@@ -118,7 +124,7 @@ function App() {
     if (!user || !profile) return
     if (matches.length === 0) return
 
-    const { current, longest } = computeStreak(matches, pronos)
+    const { current, longest } = streakData
     const storedCurrent = profile.currentStreak ?? 0
     const storedLongest = profile.longestStreak ?? 0
 
@@ -131,7 +137,7 @@ function App() {
         console.error('Streak update failed:', err),
       )
     }
-  }, [matches, pronos, user, profile, saveProfile])
+  }, [matches.length, streakData, user, profile, saveProfile])
 
   // Toutes les actions réservées passent par ici : un visiteur déclenche la
   // modale d'inscription au lieu de l'action, plutôt qu'un écran de login global.
@@ -195,11 +201,11 @@ function App() {
   const handleOpenProno = useCallback(
     (matchId: string) => {
       if (!requireAuth('Connecte-toi pour pronostiquer.')) return
-      const match = matches.find((m) => m.id === matchId)
+      const match = matchById.get(matchId)
       if (!match || isMatchLocked(match)) return
       setPronoingMatchId(matchId)
     },
-    [requireAuth, matches],
+    [requireAuth, matchById],
   )
   const handleCloseProno = useCallback(() => setPronoingMatchId(null), [])
 
@@ -268,7 +274,7 @@ function App() {
 
   const handleSubmitResult = useCallback(
     async (matchId: string, score: string, mvp: string) => {
-      const match = matches.find((m) => m.id === matchId)
+      const match = matchById.get(matchId)
       if (!match || !isMatchLocked(match) || isMatchResulted(match)) {
         throw new Error('Match invalide pour saisir un résultat')
       }
@@ -303,7 +309,7 @@ function App() {
         throw err
       }
     },
-    [matches],
+    [matchById],
   )
 
   const handleSubmitProno = useCallback(
@@ -348,8 +354,8 @@ function App() {
   // Un match terminé n'est jamais le hero : il vit dans « Les derniers résultats ».
   const heroMatch = upcoming[0] ?? inProgress[0] ?? null
 
-  const resultingMatch = matches.find((m) => m.id === resultingMatchId) ?? null
-  const pronoingMatch = matches.find((m) => m.id === pronoingMatchId) ?? null
+  const resultingMatch = resultingMatchId ? (matchById.get(resultingMatchId) ?? null) : null
+  const pronoingMatch = pronoingMatchId ? (matchById.get(pronoingMatchId) ?? null) : null
 
   return (
     <>

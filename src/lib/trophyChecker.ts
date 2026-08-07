@@ -57,9 +57,11 @@ export function checkTrophies(
   // Rien ne le stocke aujourd'hui. TODO E3.
 
   // Circuits
+  // Map plutôt que .find() : la boucle est en O(pronos), pas O(pronos × matches).
+  const matchById = new Map(matches.map((m) => [m.id, m]));
   const pronosByComp: Record<string, number> = { lec: 0, lck: 0, ewc: 0 };
   for (const matchId of Object.keys(pronos)) {
-    const m = matches.find((mm) => mm.id === matchId);
+    const m = matchById.get(matchId);
     if (m) pronosByComp[m.competition] = (pronosByComp[m.competition] ?? 0) + 1;
   }
 
