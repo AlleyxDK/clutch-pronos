@@ -66,7 +66,77 @@ async function fetchTeamRoster(teamId) {
   });
 }
 
-async function transformMatch(m) {
+// ═════════════════════════════════════════════════════════════
+// Elo et forme récente, dérivés de l'historique PandaScore
+// ═════════════════════════════════════════════════════════════
+
+const ELO_INITIAL = 1500;
+const ELO_K = 32;
+
+function computeEloRatings(pastMatchesChrono) {
+  const ratings = new Map();  // teamId (PandaScore, integer) -> Elo score
+
+  for (const m of pastMatchesChrono) {
+    const opA = m.opponents[0]?.opponent;
+    const opB = m.opponents[1]?.opponent;
+    if (!opA || !opB) continue;
+
+    const idA = opA.id;
+    const idB = opB.id;
+
+    const eloA = ratings.get(idA) ?? ELO_INITIAL;
+    const eloB = ratings.get(idB) ?? ELO_INITIAL;
+
+    const expectedA = 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
+    const expectedB = 1 - expectedA;
+
+    const winnerId = m.winner_id;
+    const resultA = winnerId === idA ? 1 : 0;
+    const resultB = winnerId === idB ? 1 : 0;
+
+    ratings.set(idA, eloA + ELO_K * (resultA - expectedA));
+    ratings.set(idB, eloB + ELO_K * (resultB - expectedB));
+  }
+
+  return ratings;
+}
+
+function eloToCote(eloTeam, eloOpponent) {
+  const prob = 1 / (1 + Math.pow(10, (eloOpponent - eloTeam) / 400));
+  const cote = 1 / prob;
+  // Clamp à des valeurs raisonnables
+  return Math.max(1.05, Math.min(10.0, cote));
+}
+
+function computeTeamForms(pastMatchesChrono) {
+  // Map<teamId, Array<'W'|'L'>> — le plus récent à la fin
+  const forms = new Map();
+
+  for (const m of pastMatchesChrono) {
+    const idA = m.opponents[0]?.opponent?.id;
+    const idB = m.opponents[1]?.opponent?.id;
+    if (!idA || !idB) continue;
+
+    const winnerId = m.winner_id;
+
+    if (!forms.has(idA)) forms.set(idA, []);
+    if (!forms.has(idB)) forms.set(idB, []);
+
+    forms.get(idA).push(winnerId === idA ? 'W' : 'L');
+    forms.get(idB).push(winnerId === idB ? 'W' : 'L');
+  }
+
+  // Ne garde que les 5 derniers pour chaque équipe
+  const formStrings = new Map();
+  for (const [teamId, history] of forms) {
+    const last5 = history.slice(-5);
+    formStrings.set(teamId, last5.join(''));
+  }
+
+  return formStrings;
+}
+
+async function transformMatch(m, eloRatings, teamForms) {
   const competition = detectCompetition(m.league?.name);
   if (!competition) return null;
   if (!m.opponents || m.opponents.length < 2) return null;
@@ -80,6 +150,15 @@ async function transformMatch(m) {
     fetchTeamRoster(opB.id),
   ]);
 
+  // Une équipe sans historique récent reste à l'Elo initial : sa cote sera
+  // donc 2.00 face à un adversaire lui aussi inconnu, soit un match nul.
+  const eloA = eloRatings.get(opA.id) ?? ELO_INITIAL;
+  const eloB = eloRatings.get(opB.id) ?? ELO_INITIAL;
+  const coteA = eloToCote(eloA, eloB);
+  const coteB = eloToCote(eloB, eloA);
+  const formA = teamForms.get(opA.id) ?? '';
+  const formB = teamForms.get(opB.id) ?? '';
+
   return {
     id: `pandascore-${m.id}`,
     competition,
@@ -91,16 +170,16 @@ async function transformMatch(m) {
       name: opA.name || '?',
       region: opA.location || '?',
       image_url: opA.image_url || null,
-      cote: 1.5,       // placeholder — sera géré par un autre système plus tard
-      form: '',        // placeholder — pas d'historique dans le fixtures tier
+      cote: Number(coteA.toFixed(2)),   // 2 décimales suffisent
+      form: formA,
     },
     team_b: {
       id: `panda-${opB.id}`,
       name: opB.name || '?',
       region: opB.location || '?',
       image_url: opB.image_url || null,
-      cote: 1.5,
-      form: '',
+      cote: Number(coteB.toFixed(2)),
+      form: formB,
     },
     start_time: Timestamp.fromDate(new Date(m.scheduled_at)),
     mvps: [...mvpsA, ...mvpsB],
@@ -113,13 +192,27 @@ async function transformMatch(m) {
  * saisie manuelle d'admin fait toujours foi.
  */
 async function autoResolvePastMatches(pastMatches) {
+  /*
+   * Le filtre « 7 derniers jours » vit ici depuis que l'appelant fournit
+   * l'historique complet (200 matches) dont l'Elo a besoin. Sans ce filtre,
+   * chaque run relirait des matches vieux de plusieurs semaines pour rien.
+   */
+  const nowMs = Date.now();
+  const sevenDaysAgo = nowMs - 7 * 24 * 3600 * 1000;
+  const recentPast = pastMatches.filter(m => {
+    if (!m.scheduled_at) return false;
+    const scheduledMs = new Date(m.scheduled_at).getTime();
+    return scheduledMs >= sevenDaysAgo && scheduledMs <= nowMs;
+  });
+  console.log(`   ${recentPast.length} matches passés dans les 7 derniers jours.`);
+
   let resolvedCount = 0;
   let skippedExisting = 0;
   let skippedNoResult = 0;
   let skippedNotInBase = 0;
   const batch = db.batch();
 
-  for (const m of pastMatches) {
+  for (const m of recentPast) {
     const docId = `pandascore-${m.id}`;
     const ref = db.collection('matches').doc(docId);
     const snap = await ref.get();
@@ -276,30 +369,46 @@ async function main() {
    * upcoming n'est retenu, et l'auto-résolution ne tournerait jamais un jour
    * sans match à venir.
    */
-  console.log('📡 Fetch des matches passés récents...');
-  const pastRes = await fetch(
-    `${PANDA_BASE}/lol/matches/past?per_page=50&sort=-scheduled_at`,
-    { headers: AUTH_HEADER }
-  );
-  if (!pastRes.ok) {
-    console.warn(`   ⚠️ Fetch past échoué (${pastRes.status}), on continue sans.`);
-  } else {
-    const rawPast = await pastRes.json();
-    console.log(`   Reçu ${rawPast.length} matches passés bruts.`);
-
-    // On ne garde que ceux dans les 7 derniers jours (pour éviter de traiter
-    // des matches très anciens à chaque run).
-    const nowMs = Date.now();
-    const sevenDaysAgo = nowMs - 7 * 24 * 3600 * 1000;
-    const recentPast = rawPast.filter(m => {
-      if (!m.scheduled_at) return false;
-      const scheduledMs = new Date(m.scheduled_at).getTime();
-      return scheduledMs >= sevenDaysAgo && scheduledMs <= nowMs;
-    });
-    console.log(`   ${recentPast.length} matches passés dans les 7 derniers jours.`);
-
-    await autoResolvePastMatches(recentPast);
+  console.log('📡 Fetch de 200 matches passés pour Elo + auto-résolution...');
+  const pastPages = await Promise.all([
+    fetch(`${PANDA_BASE}/lol/matches/past?per_page=100&page=1&sort=-scheduled_at`, { headers: AUTH_HEADER }),
+    fetch(`${PANDA_BASE}/lol/matches/past?per_page=100&page=2&sort=-scheduled_at`, { headers: AUTH_HEADER }),
+  ]);
+  for (const pastRes of pastPages) {
+    if (!pastRes.ok) {
+      console.warn(`   ⚠️ Fetch past échoué (${pastRes.status}), on continue avec ce qu'on a.`);
+    }
   }
+
+  const pastMatchesRaw = [];
+  for (const pastRes of pastPages) {
+    if (pastRes.ok) {
+      const page = await pastRes.json();
+      pastMatchesRaw.push(...page);
+    }
+  }
+  console.log(`   Reçu ${pastMatchesRaw.length} matches passés bruts.`);
+
+  // Filtre : seulement les circuits qu'on suit, et matches avec vainqueur défini
+  const pastMatchesRelevant = pastMatchesRaw.filter(m => {
+    if (!detectCompetition(m.league?.name)) return false;
+    if (!m.winner_id) return false;
+    if (!m.opponents || m.opponents.length < 2) return false;
+    if (!m.results || m.results.length < 2) return false;
+    return true;
+  });
+  console.log(`   ${pastMatchesRelevant.length} matches passés pertinents (circuits suivis + vainqueur défini).`);
+
+  // Trier chronologiquement (plus ancien d'abord) pour Elo
+  const pastMatchesChrono = [...pastMatchesRelevant].sort((a, b) =>
+    new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
+  );
+
+  const eloRatings = computeEloRatings(pastMatchesChrono);
+  const teamForms = computeTeamForms(pastMatchesChrono);
+  console.log(`   Elo calculé pour ${eloRatings.size} équipes, forme pour ${teamForms.size}.`);
+
+  await autoResolvePastMatches(pastMatchesRelevant);
 
   console.log('🔄 Filtrage et transformation...');
   const transformed = [];
@@ -311,7 +420,7 @@ async function main() {
       if (!m.opponents || m.opponents.length < 2) { stats.tooFewOpponents++; continue; }
       if (!m.scheduled_at) { stats.noScheduledAt++; continue; }
 
-      const doc = await transformMatch(m);
+      const doc = await transformMatch(m, eloRatings, teamForms);
       if (doc) {
         transformed.push(doc);
         stats.kept++;
@@ -330,11 +439,34 @@ async function main() {
 
   console.log('💾 Écriture dans Firestore...');
   const batch = db.batch();
+  let preservedOdds = 0;
   for (const doc of transformed) {
     const ref = db.collection('matches').doc(doc.id);
+
+    /*
+     * Un match déjà résolu garde les cotes et la forme qu'il avait au moment
+     * du prono. L'Elo évolue à chaque run : sans cette garde, les points déjà
+     * attribués aux joueurs changeraient rétroactivement.
+     */
+    const existingSnap = await ref.get();
+    if (existingSnap.exists) {
+      const existing = existingSnap.data();
+      if (existing.result) {
+        doc.team_a.cote = existing.team_a.cote;
+        doc.team_a.form = existing.team_a.form;
+        doc.team_b.cote = existing.team_b.cote;
+        doc.team_b.form = existing.team_b.form;
+        preservedOdds++;
+      }
+    }
+
     batch.set(ref, doc, { merge: true });
   }
   await batch.commit();
+
+  if (preservedOdds > 0) {
+    console.log(`   ${preservedOdds} matches résolus : cotes et formes d'origine préservées.`);
+  }
 
   console.log(`✅ ${transformed.length} matches écrits.`);
 
