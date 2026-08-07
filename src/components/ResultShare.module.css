@@ -1,0 +1,17 @@
+.share {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pct {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 12px;
+}

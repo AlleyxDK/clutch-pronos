@@ -2,13 +2,14 @@ import type { Match, Profile, Prono } from '../lib/types'
 import type { RevealedPronoState } from '../hooks/useRevealedPronos'
 import { winnerPts, calculatePoints } from '../lib/points'
 import { teamSigil } from '../lib/teams'
-import { scoreLabelFromKey } from '../lib/scores'
-import { isMatchLocked, isMatchResulted } from '../lib/matchStatus'
+import { scoreLabelFromKey, getScoreParts } from '../lib/scores'
+import { isMatchLocked, isMatchResulted, isMatchFinished } from '../lib/matchStatus'
 import { pseudoInitials } from '../lib/initials'
 import { isAdmin } from '../lib/admin'
 import { formatMatchTime } from '../lib/format'
 import TeamLogo from './TeamLogo'
 import FormDots from './FormDots'
+import ResultShare from './ResultShare'
 import styles from './MatchCard.module.css'
 
 interface MatchCardProps {
@@ -50,6 +51,7 @@ function MatchCard({
 }: MatchCardProps) {
   const locked = isMatchLocked(match)
   const resulted = isMatchResulted(match)
+  const finished = isMatchFinished(match)
   const revealed = revealedFor(revealedPronos, match.id)
   const extra = revealed.length - MAX_PILLS
 
@@ -75,6 +77,37 @@ function MatchCard({
         {extra > 0 && <span className={`${styles.pill} ${styles.pillMore}`}>+{extra}</span>}
       </div>
     ) : null
+
+  // Zone centrale : « VS » avant le match, le score une fois le résultat saisi.
+  let center = <span className={styles.vs}>VS</span>
+
+  if (resulted && match.result) {
+    const result = match.result
+    const parts = getScoreParts(result.score)
+    const agg = result.aggregates
+    const total = agg?.totalPronos ?? 0
+
+    center = (
+      <div className={styles.resultCenter}>
+        <span className={styles.resultScore}>
+          <span>{parts.teamAGames}</span>
+          <span className={styles.resultDash}>–</span>
+          <span>{parts.teamBGames}</span>
+        </span>
+
+        {total > 0 && <ResultShare count={agg.scoreCounts[result.score] ?? 0} total={total} />}
+
+        {/* Un match sans MVP sélectionnable a result.mvp === '' : on n'affiche
+            ni la ligne MVP ni son pourcentage. */}
+        {result.mvp !== '' && (
+          <>
+            <span className={styles.resultMvp}>MVP · {result.mvp.split(' (')[0]}</span>
+            {total > 0 && <ResultShare count={agg.mvpCounts[result.mvp] ?? 0} total={total} />}
+          </>
+        )}
+      </div>
+    )
+  }
 
   return (
     <article className={styles.card}>
@@ -102,7 +135,7 @@ function MatchCard({
           </div>
         </div>
 
-        <span className={styles.vs}>VS</span>
+        {center}
 
         <div className={`${styles.team} ${styles.right}`}>
           <div className={styles.teamInfo}>
@@ -121,27 +154,28 @@ function MatchCard({
 
       {resulted && match.result ? (
         <div className={`${styles.status} ${styles.statusStacked}`}>
-          <span className={styles.statusResult}>
-            🏆 Résultat : {scoreLabelFromKey(match, match.result.score)} · MVP{' '}
-            {match.result.mvp.split(' (')[0]}
-          </span>
-
           {existingProno ? (
             <span className={styles.statusGain}>
               Tu gagnes {calculatePoints(match, existingProno).total} pts
             </span>
           ) : (
-            <span className={styles.statusNoProno}>Tu n'as pas pronostiqué ce match</span>
+            <span className={styles.statusNoProno}>Tu n'as pas pronostiqué</span>
           )}
 
           {pills}
         </div>
       ) : locked ? (
         <div className={`${styles.status} ${styles.statusStacked}`}>
+          {/* Un match dont la fenêtre de jeu est écoulée mais dont personne n'a
+              saisi le résultat n'est plus « verrouillé », il est terminé. */}
+          {finished && (
+            <span className={styles.statusPending}>Match terminé · Résultat non renseigné</span>
+          )}
+
           <span className={existingProno ? styles.statusLocked : styles.statusNoProno}>
             {existingProno
-              ? `🔒 Match verrouillé · Ton prono : ${scoreLabelFromKey(match, existingProno.score)}`
-              : '🔒 Match verrouillé · Pas de prono'}
+              ? `${finished ? '' : '🔒 Match verrouillé · '}Ton prono : ${scoreLabelFromKey(match, existingProno.score)}`
+              : `${finished ? 'Pas de prono' : '🔒 Match verrouillé · Pas de prono'}`}
           </span>
 
           {pills}

@@ -38,7 +38,10 @@ export function calculatePoints(match: Match, prono: Prono): PointsBreakdown {
     ? rarityBonus(agg.scoreCounts[prono.score] ?? 0, agg.totalPronos)
     : 0;
 
-  const mvpBonus = (prono.mvp === result.mvp)
+  // Ne compte le bonus MVP que si les deux valeurs sont non-vides ET égales.
+  // Un match sans mvps possibles a prono.mvp === '' et result.mvp === '',
+  // ce qui donnerait un faux match sans cette garde.
+  const mvpBonus = (prono.mvp && result.mvp && prono.mvp === result.mvp)
     ? rarityBonus(agg.mvpCounts[prono.mvp] ?? 0, agg.totalPronos)
     : 0;
 

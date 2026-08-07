@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Match } from '../lib/types'
 import { generateScoreOptions } from '../lib/scores'
+import { matchHasMvps } from '../lib/matchStatus'
 import Modal from './Modal'
 import styles from './ResultModal.module.css'
 
@@ -17,16 +18,17 @@ function ResultModal({ match, onSubmit, onClose }: ResultModalProps) {
   const [error, setError] = useState<string | null>(null)
 
   const scoreOptions = generateScoreOptions(match)
-  const canSubmit = selectedScore !== null && selectedMvp !== ''
+  const hasMvps = matchHasMvps(match)
+  const canSubmit = selectedScore !== null && !(hasMvps && selectedMvp === '')
 
   const handleSubmit = async () => {
-    if (selectedScore === null || selectedMvp === '') return
+    if (!canSubmit || selectedScore === null) return
 
     setSubmitting(true)
     setError(null)
 
     try {
-      await onSubmit(selectedScore, selectedMvp)
+      await onSubmit(selectedScore, hasMvps ? selectedMvp : '')
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur')
@@ -57,22 +59,24 @@ function ResultModal({ match, onSubmit, onClose }: ResultModalProps) {
         </div>
       </div>
 
-      <div className={styles.field}>
-        <span className={styles.label}>MVP officiel</span>
+      {hasMvps && (
+        <div className={styles.field}>
+          <span className={styles.label}>MVP officiel</span>
 
-        <select
-          className={styles.select}
-          value={selectedMvp}
-          onChange={(event) => setSelectedMvp(event.target.value)}
-        >
-          <option value="">Choisis un joueur…</option>
-          {match.mvps.map((player) => (
-            <option key={player} value={player}>
-              {player}
-            </option>
-          ))}
-        </select>
-      </div>
+          <select
+            className={styles.select}
+            value={selectedMvp}
+            onChange={(event) => setSelectedMvp(event.target.value)}
+          >
+            <option value="">Choisis un joueur…</option>
+            {match.mvps.map((player) => (
+              <option key={player} value={player}>
+                {player}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {error !== null && <p className={styles.error}>{error}</p>}
 

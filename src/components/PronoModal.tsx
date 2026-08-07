@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Match, Prono } from '../lib/types'
 import { generateScoreOptions } from '../lib/scores'
+import { matchHasMvps } from '../lib/matchStatus'
 import Modal from './Modal'
 import styles from './PronoModal.module.css'
 
@@ -16,11 +17,14 @@ function PronoModal({ match, existingProno, onSubmit, onClose }: PronoModalProps
   const [selectedMvp, setSelectedMvp] = useState<string>(existingProno?.mvp ?? '')
 
   const scoreOptions = generateScoreOptions(match)
-  const canSubmit = selectedScore !== null && selectedMvp !== ''
+  const hasMvps = matchHasMvps(match)
+  const canSubmit = selectedScore !== null && !(hasMvps && selectedMvp === '')
 
   const handleValidate = () => {
-    if (selectedScore === null || selectedMvp === '') return
-    onSubmit(selectedScore, selectedMvp)
+    if (!canSubmit || selectedScore === null) return
+    // Sans liste de MVP, on stocke une chaîne vide : calculatePoints la
+    // reconnaît et n'attribue aucun bonus.
+    onSubmit(selectedScore, hasMvps ? selectedMvp : '')
     onClose()
   }
 
@@ -61,25 +65,27 @@ function PronoModal({ match, existingProno, onSubmit, onClose }: PronoModalProps
         </div>
       </div>
 
-      <div className={styles.field}>
-        <div className={styles.fieldLabel}>
-          <span>MVP</span>
-          <span className={styles.fieldNote}>Bonus rareté</span>
-        </div>
+      {hasMvps && (
+        <div className={styles.field}>
+          <div className={styles.fieldLabel}>
+            <span>MVP</span>
+            <span className={styles.fieldNote}>Bonus rareté</span>
+          </div>
 
-        <select
-          className={styles.select}
-          value={selectedMvp}
-          onChange={(event) => setSelectedMvp(event.target.value)}
-        >
-          <option value="">Choisis un joueur…</option>
-          {match.mvps.map((player) => (
-            <option key={player} value={player}>
-              {player}
-            </option>
-          ))}
-        </select>
-      </div>
+          <select
+            className={styles.select}
+            value={selectedMvp}
+            onChange={(event) => setSelectedMvp(event.target.value)}
+          >
+            <option value="">Choisis un joueur…</option>
+            {match.mvps.map((player) => (
+              <option key={player} value={player}>
+                {player}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className={styles.actions}>
         <button type="button" className={styles.btnSecondary} onClick={onClose}>

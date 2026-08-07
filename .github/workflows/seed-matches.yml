@@ -2,8 +2,10 @@ name: Seed PandaScore matches
 
 on:
   schedule:
-    # Toutes les 6 heures (00:00, 06:00, 12:00, 18:00 UTC)
-    - cron: '0 */6 * * *'
+    # Toutes les heures, à l'heure pile (UTC).
+    # GitHub Actions ne garantit pas la ponctualité des crons : les runs
+    # planifiés partent souvent avec plusieurs minutes de retard.
+    - cron: '0 * * * *'
   # Permet le déclenchement manuel depuis l'onglet Actions
   workflow_dispatch:
 

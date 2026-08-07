@@ -6,6 +6,7 @@ import { calculatePoints } from '../lib/points'
 import { pseudoInitials } from '../lib/initials'
 import Countdown from './Countdown'
 import TeamBlock from './TeamBlock'
+import ResultShare from './ResultShare'
 import styles from './MatchHero.module.css'
 
 interface MatchHeroProps {
@@ -71,7 +72,26 @@ function MatchHero({
                 <span className={styles.scoreDash}>–</span>
                 <span>{getScoreParts(match.result.score).teamBGames}</span>
               </span>
-              <span className={styles.mvpLine}>MVP · {match.result.mvp.split(' (')[0]}</span>
+
+              {(match.result.aggregates?.totalPronos ?? 0) > 0 && (
+                <ResultShare
+                  count={match.result.aggregates.scoreCounts[match.result.score] ?? 0}
+                  total={match.result.aggregates.totalPronos}
+                />
+              )}
+
+              {/* Un match sans MVP sélectionnable a result.mvp === ''. */}
+              {match.result.mvp !== '' && (
+                <>
+                  <span className={styles.mvpLine}>MVP · {match.result.mvp.split(' (')[0]}</span>
+                  {(match.result.aggregates?.totalPronos ?? 0) > 0 && (
+                    <ResultShare
+                      count={match.result.aggregates.mvpCounts[match.result.mvp] ?? 0}
+                      total={match.result.aggregates.totalPronos}
+                    />
+                  )}
+                </>
+              )}
             </div>
           ) : (
             <>
@@ -106,8 +126,15 @@ function MatchHero({
                 🔒 Ton prono :{' '}
                 <b className={styles.heroCtaValue}>
                   {scoreLabelFromKey(match, existingProno.score)}
-                </b>{' '}
-                · MVP <b className={styles.heroCtaValue}>{existingProno.mvp.split(' (')[0]}</b>
+                </b>
+                {/* Ajout hors spec: sans cette garde, un prono sans MVP
+                    (match PandaScore) affiche un « · MVP » orphelin. */}
+                {existingProno.mvp !== '' && (
+                  <>
+                    {' '}
+                    · MVP <b className={styles.heroCtaValue}>{existingProno.mvp.split(' (')[0]}</b>
+                  </>
+                )}
               </>
             )
           ) : existingProno === null ? (
@@ -117,8 +144,13 @@ function MatchHero({
               Ton prono :{' '}
               <b className={styles.heroCtaValue}>
                 {scoreLabelFromKey(match, existingProno.score)}
-              </b>{' '}
-              · MVP <b className={styles.heroCtaValue}>{existingProno.mvp.split(' (')[0]}</b>
+              </b>
+              {existingProno.mvp !== '' && (
+                <>
+                  {' '}
+                  · MVP <b className={styles.heroCtaValue}>{existingProno.mvp.split(' (')[0]}</b>
+                </>
+              )}
             </>
           )}
         </span>
@@ -155,7 +187,8 @@ function MatchHero({
                       {profile ? profile.pseudo : 'Chargement…'}
                     </span>
                     <span className={styles.revealPick}>
-                      {scoreLabelFromKey(match, prono.score)} · MVP {prono.mvp.split(' (')[0]}
+                      {scoreLabelFromKey(match, prono.score)}
+                      {prono.mvp !== '' && ` · MVP ${prono.mvp.split(' (')[0]}`}
                     </span>
                   </span>
                 </div>

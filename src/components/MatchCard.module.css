@@ -110,6 +110,52 @@
   text-align: center;
 }
 
+/* ---- Zone centrale d'un match résulté ---- */
+
+.resultCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Ajout hors spec: le gap de .teams s'appliquerait entre chaque ligne
+     et annulerait les margin-top de 4 et 6px demandées. */
+  gap: 0;
+  min-width: 0;
+}
+
+.resultScore {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+  text-align: center;
+}
+
+.resultDash {
+  color: var(--text-3);
+}
+
+.resultMvp {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  text-align: center;
+  /* Ajout hors spec: un pseudo long pousserait la colonne centrale et
+     écraserait les deux blocs équipes. */
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---- Pied de carte ---- */
 
 .status {
@@ -143,14 +189,13 @@
   color: var(--text-3);
 }
 
-/* ---- Match résulté ---- */
-
-.statusResult {
-  font-family: var(--font-display);
-  font-weight: 600;
+/* Match passé dont personne n'a saisi le résultat */
+.statusPending {
   font-size: 13px;
-  color: var(--text-1);
+  color: var(--text-3);
 }
+
+/* ---- Match résulté ---- */
 
 .statusGain {
   font-size: 13px;

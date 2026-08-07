@@ -222,9 +222,22 @@ async function main() {
     if (seenIds.has(id)) continue;                // toujours renvoyé, garde
 
     const data = doc.data();
+    const startTime = data.start_time?.toMillis?.() || 0;
+
+    // Nouvelle règle : préserver tous les matches passés, même sans result.
+    // Ils seront affichés dans "Les derniers résultats" comme historiques.
+    // Nettoyage manuel prévu à la fin de chaque saison.
+    if (startTime < now) continue;
+
     if (data.result) continue;                    // résulté = préserver toujours
 
-    const startTime = data.start_time?.toMillis?.() || 0;
+    // ⚠️ Cette ligne rend le bloc inerte : tout ce qui arrive ici est dans le
+    // futur, donc `startTime + 24h > now` est toujours vrai. Aucune suppression
+    // n'a donc lieu, par choix — on attend les logs de diag PandaScore avant de
+    // décider si on veut vraiment supprimer les matches futurs orphelins.
+    // La retirer suffit à réactiver la suppression des annulés/reprogrammés,
+    // mais attention : per_page=100 n'est pas paginé, un match légitime
+    // au-delà du 100e serait vu comme orphelin à chaque run.
     if (startTime + gracePeriod > now) continue;  // trop récent, on attend un cycle
 
     batchDeleteOrphans.delete(doc.ref);

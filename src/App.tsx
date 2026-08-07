@@ -24,6 +24,7 @@ import Nav from './components/Nav'
 import Hero from './components/Hero'
 import LeaguesSection from './components/LeaguesSection'
 import MatchesSection from './components/MatchesSection'
+import ResultsSection from './components/ResultsSection'
 import PronoModal from './components/PronoModal'
 import ResultModal from './components/ResultModal'
 import CreateLeagueModal from './components/CreateLeagueModal'
@@ -31,11 +32,21 @@ import LeagueCreatedModal from './components/LeagueCreatedModal'
 import JoinLeagueModal from './components/JoinLeagueModal'
 import LeagueDetailModal from './components/LeagueDetailModal'
 import Onboarding from './components/Onboarding'
+import AuthScreen from './components/AuthScreen'
+import ConversionBanner from './components/ConversionBanner'
+import ConvertAccountModal from './components/ConvertAccountModal'
 import SplashScreen from './components/SplashScreen'
-import ErrorScreen from './components/ErrorScreen'
 
 function App() {
-  const { user, loading: authLoading } = useAuth()
+  const {
+    user,
+    loading: authLoading,
+    signUp,
+    signIn,
+    signOut,
+    sendPasswordReset,
+    linkAnonymousToEmail,
+  } = useAuth()
   const { profile, loading: profileLoading, saveProfile } = useProfile(user?.uid ?? null)
   const { pronos, submitProno } = usePronos(user?.uid ?? null)
   const { leagues, createLeague, joinLeague } = useLeagues(user?.uid ?? null)
@@ -54,6 +65,7 @@ function App() {
   const [createdLeague, setCreatedLeague] = useState<League | null>(null)
   const [resultingMatchId, setResultingMatchId] = useState<string | null>(null)
   const [detailLeague, setDetailLeague] = useState<League | null>(null)
+  const [showConvert, setShowConvert] = useState(false)
 
   const handleOpenProno = useCallback(
     (matchId: string) => {
@@ -78,6 +90,42 @@ function App() {
   const handleCloseLeagueDetail = useCallback(() => {
     setDetailLeague(null)
   }, [])
+
+  const handleSignIn = useCallback(
+    async (email: string, password: string) => {
+      await signIn(email, password)
+    },
+    [signIn],
+  )
+
+  const handleSignUp = useCallback(
+    async (email: string, password: string, pseudo: string) => {
+      await signUp(email, password, pseudo)
+      // Le profil est créé dans signUp lui-même.
+    },
+    [signUp],
+  )
+
+  const handleSignOut = useCallback(async () => {
+    await signOut()
+  }, [signOut])
+
+  const handleSendReset = useCallback(
+    async (email: string) => {
+      await sendPasswordReset(email)
+    },
+    [sendPasswordReset],
+  )
+
+  const handleConvert = useCallback(
+    async (email: string, password: string) => {
+      await linkAnonymousToEmail(email, password)
+    },
+    [linkAnonymousToEmail],
+  )
+
+  const handleOpenConvert = useCallback(() => setShowConvert(true), [])
+  const handleCloseConvert = useCallback(() => setShowConvert(false), [])
 
   const handleOpenResult = useCallback((matchId: string) => setResultingMatchId(matchId), [])
   const handleCloseResult = useCallback(() => setResultingMatchId(null), [])
@@ -135,44 +183,51 @@ function App() {
     [pronoingMatchId, submitProno],
   )
 
-  if (authLoading || profileLoading || matchesLoading) return <SplashScreen />
-  if (!user) return <ErrorScreen message="Impossible de se connecter." />
+  if (authLoading) return <SplashScreen />
+  if (!user) {
+    return (
+      <AuthScreen
+        onSignIn={handleSignIn}
+        onSignUp={handleSignUp}
+        onSendReset={handleSendReset}
+      />
+    )
+  }
+  if (profileLoading || matchesLoading) return <SplashScreen />
+  // Filet de sécurité : cas rare d'un user créé sans profil
   if (!profile) return <Onboarding onSubmit={saveProfile} />
 
   const now = Date.now()
 
-  // P1 : en cours (verrouillé sans résultat, dans la fenêtre)
-  const inProgress = matches
-    .filter((m) => m.start_time <= now && !m.result && m.start_time + heroWindowMs(m) > now)
-    .sort((a, b) => b.start_time - a.start_time)
-
-  // P2 : juste résulté (résultat récemment saisi, même fenêtre)
-  const justResulted = matches
-    .filter((m) => m.result && m.result.submittedAt + heroWindowMs(m) > now)
-    .sort((a, b) => (b.result?.submittedAt ?? 0) - (a.result?.submittedAt ?? 0))
-
-  // P3 : prochain à venir
+  // Priorité 1 : le prochain match à venir.
   const upcoming = matches
     .filter((m) => m.start_time > now)
     .sort((a, b) => a.start_time - b.start_time)
 
-  // P4 : stale (tout dans le passé, hors fenêtre)
-  const staleFallback = matches
-    .filter((m) => m.start_time <= now)
+  // Priorité 2 : match en cours (verrouillé sans résultat, fenêtre de fraîcheur).
+  const inProgress = matches
+    .filter((m) => m.start_time <= now && !m.result && m.start_time + heroWindowMs(m) > now)
     .sort((a, b) => b.start_time - a.start_time)
 
-  const heroMatch =
-    justResulted[0] ?? inProgress[0] ?? upcoming[0] ?? staleFallback[0] ?? matches[0] ?? null
+  // Priorité 3 : rien de rien. Le hero disparaît.
+  // Un match terminé n'est jamais le hero : il vit dans « Les derniers résultats ».
+  const heroMatch = upcoming[0] ?? inProgress[0] ?? null
 
   const resultingMatch = matches.find((m) => m.id === resultingMatchId) ?? null
   const pronoingMatch = matches.find((m) => m.id === pronoingMatchId) ?? null
 
   return (
     <>
-      <Nav pseudo={profile.pseudo} matches={matches} pronos={pronos} />
+      {user.isAnonymous && <ConversionBanner onOpenConvert={handleOpenConvert} />}
 
-      {/* Ajout hors spec: garde sur matches vide. Avant le premier seed la
-          collection Firestore est vide, et Hero planterait sur un match absent. */}
+      <Nav
+        pseudo={profile.pseudo}
+        matches={matches}
+        pronos={pronos}
+        onSignOut={handleSignOut}
+      />
+
+      {/* Le hero se masque quand il n'y a ni match à venir ni match en cours. */}
       {heroMatch && (
         <Hero
           match={heroMatch}
@@ -193,6 +248,13 @@ function App() {
         matches={matches}
         pronos={pronos}
         onPronoClick={handleOpenProno}
+        revealedPronos={revealedPronos}
+        friendProfiles={friendProfiles}
+        onOpenResult={handleOpenResult}
+      />
+      <ResultsSection
+        matches={matches}
+        pronos={pronos}
         revealedPronos={revealedPronos}
         friendProfiles={friendProfiles}
         onOpenResult={handleOpenResult}
@@ -234,6 +296,10 @@ function App() {
           friendProfiles={friendProfiles}
           onClose={handleCloseLeagueDetail}
         />
+      )}
+
+      {showConvert && (
+        <ConvertAccountModal onSubmit={handleConvert} onClose={handleCloseConvert} />
       )}
 
       {resultingMatch && (

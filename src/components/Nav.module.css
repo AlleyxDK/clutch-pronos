@@ -73,6 +73,27 @@
   border-color: var(--border-strong);
 }
 
+.signOut {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  margin-left: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  color: var(--text-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.signOut:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 /* ---- Pastille utilisateur ---- */
 
 .pill {

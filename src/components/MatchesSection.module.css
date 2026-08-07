@@ -26,38 +26,96 @@
   color: var(--text-2);
 }
 
-/* ---- Onglets de filtre ---- */
+/* ---- Sélecteur de date ---- */
 
-.tabs {
-  display: flex;
-  gap: 4px;
-  background: var(--surface-1);
-  padding: 4px;
-  border-radius: 10px;
+.datePicker {
+  padding: 8px 12px;
+  background: var(--surface-2);
   border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-1);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s;
 }
 
-.tab {
-  padding: 8px 14px;
-  background: transparent;
-  border: none;
-  border-radius: 7px;
+.datePicker:hover {
+  border-color: var(--border-strong);
+}
+
+.datePicker:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Ajout hors spec: sur fond sombre, l'icône calendrier native de Chrome
+   reste noire et devient invisible. Le filtre l'inverse. */
+.datePicker::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
+
+/* ---- Onglets de jour ---- */
+
+.dayTabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 24px;
+}
+
+.dayTab {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 14px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   color: var(--text-2);
-  font-size: 13px;
-  font-weight: 500;
   cursor: pointer;
   /* Ajout hors spec: un <button> n'hérite pas la police du body */
   font-family: inherit;
-  transition: background-color 0.15s, color 0.15s;
+  transition: all 0.15s;
 }
 
-.tab:hover {
+.dayTab:hover {
+  border-color: var(--border-strong);
   color: var(--text-1);
 }
 
-.tabActive {
-  background: var(--surface-3);
-  color: var(--text-1);
+.dayTabActive,
+.dayTabActive:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.dayTabLabel {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.dayTabCount {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.dayTabActive .dayTabCount {
+  color: var(--accent);
+  opacity: 0.7;
 }
 
 /* ---- Grille ---- */
@@ -66,6 +124,17 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 16px;
+}
+
+/* ---- État vide ---- */
+
+.empty {
+  padding: 40px 24px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 14px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-2);
 }
 
 @media (max-width: 900px) {
