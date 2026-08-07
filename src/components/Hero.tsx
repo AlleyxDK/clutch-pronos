@@ -10,6 +10,8 @@ interface HeroProps {
   onPronoClick: (matchId: string) => void
   revealedPronos: Record<string, RevealedPronoState>
   friendProfiles: Record<string, Profile>
+  isVisitor: boolean
+  onOpenAuth: (context: string) => void
 }
 
 function Hero({
@@ -18,6 +20,8 @@ function Hero({
   onPronoClick,
   revealedPronos,
   friendProfiles,
+  isVisitor,
+  onOpenAuth,
 }: HeroProps) {
   const locked = isMatchLocked(match)
   const resulted = isMatchResulted(match)
@@ -60,6 +64,8 @@ function Hero({
           onPronoClick={onPronoClick}
           revealedPronos={revealedPronos}
           friendProfiles={friendProfiles}
+          isVisitor={isVisitor}
+          onOpenAuth={onOpenAuth}
         />
       </div>
     </section>

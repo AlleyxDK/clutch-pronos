@@ -11,9 +11,11 @@ interface NavProps {
   matches: Match[]
   pronos: Record<string, Prono>
   onSignOut: () => void
+  isVisitor?: boolean
+  onOpenAuth?: (context: string) => void
 }
 
-function Nav({ pseudo, matches, pronos, onSignOut }: NavProps) {
+function Nav({ pseudo, matches, pronos, onSignOut, isVisitor, onOpenAuth }: NavProps) {
   const totalPoints = useMemo(() => {
     let sum = 0
     for (const match of matches) {
@@ -51,39 +53,60 @@ function Nav({ pseudo, matches, pronos, onSignOut }: NavProps) {
             </button>
           )}
 
-          <div className={styles.pill}>
-            <span className={styles.avatar}>{pseudoInitials(pseudo)}</span>
-            <span className={styles.identity}>
-              <span className={styles.username}>{pseudo}</span>
-              <span className={styles.points}>{totalPoints} pts</span>
-            </span>
-          </div>
+          {isVisitor ? (
+            <div className={styles.authActions}>
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={() => onOpenAuth?.('Content de te revoir.')}
+              >
+                Se connecter
+              </button>
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                onClick={() => onOpenAuth?.('Rejoins Clutch.')}
+              >
+                Créer un compte
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className={styles.pill}>
+                <span className={styles.avatar}>{pseudoInitials(pseudo)}</span>
+                <span className={styles.identity}>
+                  <span className={styles.username}>{pseudo}</span>
+                  <span className={styles.points}>{totalPoints} pts</span>
+                </span>
+              </div>
 
-          <button
-            type="button"
-            className={styles.signOut}
-            aria-label="Se déconnecter"
-            title="Se déconnecter"
-            onClick={() => {
-              if (window.confirm('Se déconnecter ?')) onSignOut()
-            }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-          </button>
+              <button
+                type="button"
+                className={styles.signOut}
+                aria-label="Se déconnecter"
+                title="Se déconnecter"
+                onClick={() => {
+                  if (window.confirm('Se déconnecter ?')) onSignOut()
+                }}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+              </button>
+            </>
+          )}
         </div>
       </div>
     </nav>

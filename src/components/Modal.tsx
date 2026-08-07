@@ -34,7 +34,9 @@ function Modal({ title, subtitle, onClose, children, maxWidth }: ModalProps) {
           ×
         </button>
 
-        <h2 className={styles.title}>{title}</h2>
+        {/* Ajout hors spec: AuthModal passe title="" pour ne pas doubler le
+            titre interne de AuthForm. Un h2 vide laisserait sa margin-bottom. */}
+        {title !== '' && <h2 className={styles.title}>{title}</h2>}
         {subtitle !== undefined && <p className={styles.subtitle}>{subtitle}</p>}
 
         {children}

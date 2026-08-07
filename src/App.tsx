@@ -32,7 +32,7 @@ import LeagueCreatedModal from './components/LeagueCreatedModal'
 import JoinLeagueModal from './components/JoinLeagueModal'
 import LeagueDetailModal from './components/LeagueDetailModal'
 import Onboarding from './components/Onboarding'
-import AuthScreen from './components/AuthScreen'
+import AuthModal from './components/AuthModal'
 import ConversionBanner from './components/ConversionBanner'
 import ConvertAccountModal from './components/ConvertAccountModal'
 import SplashScreen from './components/SplashScreen'
@@ -66,27 +66,56 @@ function App() {
   const [resultingMatchId, setResultingMatchId] = useState<string | null>(null)
   const [detailLeague, setDetailLeague] = useState<League | null>(null)
   const [showConvert, setShowConvert] = useState(false)
+  // null = modale d'auth fermée ; string = ouverte avec le message contextuel.
+  const [authModalContext, setAuthModalContext] = useState<string | null>(null)
+
+  // Toutes les actions réservées passent par ici : un visiteur déclenche la
+  // modale d'inscription au lieu de l'action, plutôt qu'un écran de login global.
+  const requireAuth = useCallback(
+    (context: string): boolean => {
+      if (!user) {
+        setAuthModalContext(context)
+        return false
+      }
+      return true
+    },
+    [user],
+  )
+
+  const handleOpenAuth = useCallback((context: string) => setAuthModalContext(context), [])
+  const handleCloseAuth = useCallback(() => setAuthModalContext(null), [])
 
   const handleOpenProno = useCallback(
     (matchId: string) => {
+      if (!requireAuth('Connecte-toi pour pronostiquer.')) return
       const match = matches.find((m) => m.id === matchId)
       if (!match || isMatchLocked(match)) return
       setPronoingMatchId(matchId)
     },
-    [matches],
+    [requireAuth, matches],
   )
   const handleCloseProno = useCallback(() => setPronoingMatchId(null), [])
 
-  const handleOpenCreate = useCallback(() => setCreatingLeague(true), [])
+  const handleOpenCreate = useCallback(() => {
+    if (!requireAuth('Connecte-toi pour créer une ligue.')) return
+    setCreatingLeague(true)
+  }, [requireAuth])
   const handleCloseCreate = useCallback(() => setCreatingLeague(false), [])
-  const handleOpenJoin = useCallback(() => setJoiningLeague(true), [])
+  const handleOpenJoin = useCallback(() => {
+    if (!requireAuth('Connecte-toi pour rejoindre une ligue.')) return
+    setJoiningLeague(true)
+  }, [requireAuth])
   const handleCloseJoin = useCallback(() => setJoiningLeague(false), [])
   const handleLeagueCreated = useCallback((league: League) => setCreatedLeague(league), [])
   const handleCloseLeagueCreated = useCallback(() => setCreatedLeague(null), [])
 
-  const handleOpenLeagueDetail = useCallback((league: League) => {
-    setDetailLeague(league)
-  }, [])
+  const handleOpenLeagueDetail = useCallback(
+    (league: League) => {
+      if (!requireAuth('Connecte-toi pour voir le classement.')) return
+      setDetailLeague(league)
+    },
+    [requireAuth],
+  )
   const handleCloseLeagueDetail = useCallback(() => {
     setDetailLeague(null)
   }, [])
@@ -184,18 +213,14 @@ function App() {
   )
 
   if (authLoading) return <SplashScreen />
-  if (!user) {
-    return (
-      <AuthScreen
-        onSignIn={handleSignIn}
-        onSignUp={handleSignUp}
-        onSendReset={handleSendReset}
-      />
-    )
-  }
-  if (profileLoading || matchesLoading) return <SplashScreen />
+  if (matchesLoading) return <SplashScreen />
+  if (user && profileLoading) return <SplashScreen />
   // Filet de sécurité : cas rare d'un user créé sans profil
-  if (!profile) return <Onboarding onSubmit={saveProfile} />
+  if (user && !profile) return <Onboarding onSubmit={saveProfile} />
+
+  // Un visiteur (user === null) tombe dans le rendu principal comme un
+  // connecté. Les restrictions vivent au niveau des actions, via requireAuth.
+  const isVisitor = user === null
 
   const now = Date.now()
 
@@ -218,13 +243,15 @@ function App() {
 
   return (
     <>
-      {user.isAnonymous && <ConversionBanner onOpenConvert={handleOpenConvert} />}
+      {user?.isAnonymous && <ConversionBanner onOpenConvert={handleOpenConvert} />}
 
       <Nav
-        pseudo={profile.pseudo}
+        pseudo={profile?.pseudo ?? ''}
         matches={matches}
         pronos={pronos}
         onSignOut={handleSignOut}
+        isVisitor={isVisitor}
+        onOpenAuth={handleOpenAuth}
       />
 
       {/* Le hero se masque quand il n'y a ni match à venir ni match en cours. */}
@@ -235,15 +262,19 @@ function App() {
           onPronoClick={handleOpenProno}
           revealedPronos={revealedPronos}
           friendProfiles={friendProfiles}
+          isVisitor={isVisitor}
+          onOpenAuth={handleOpenAuth}
         />
       )}
 
-      <LeaguesSection
-        leagues={leagues}
-        onCreate={handleOpenCreate}
-        onJoin={handleOpenJoin}
-        onOpenDetail={handleOpenLeagueDetail}
-      />
+      {user && (
+        <LeaguesSection
+          leagues={leagues}
+          onCreate={handleOpenCreate}
+          onJoin={handleOpenJoin}
+          onOpenDetail={handleOpenLeagueDetail}
+        />
+      )}
       <MatchesSection
         matches={matches}
         pronos={pronos}
@@ -285,7 +316,7 @@ function App() {
         <LeagueCreatedModal league={createdLeague} onClose={handleCloseLeagueCreated} />
       )}
 
-      {detailLeague && profile && (
+      {detailLeague && user && profile && (
         <LeagueDetailModal
           league={detailLeague}
           matches={matches}
@@ -307,6 +338,16 @@ function App() {
           match={resultingMatch}
           onSubmit={(score, mvp) => handleSubmitResult(resultingMatch.id, score, mvp)}
           onClose={handleCloseResult}
+        />
+      )}
+
+      {authModalContext !== null && (
+        <AuthModal
+          contextMessage={authModalContext}
+          onSignIn={handleSignIn}
+          onSignUp={handleSignUp}
+          onSendReset={handleSendReset}
+          onClose={handleCloseAuth}
         />
       )}
     </>

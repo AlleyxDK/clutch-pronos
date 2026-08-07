@@ -15,6 +15,8 @@ interface MatchHeroProps {
   onPronoClick: (matchId: string) => void
   revealedPronos: Record<string, RevealedPronoState>
   friendProfiles: Record<string, Profile>
+  isVisitor: boolean
+  onOpenAuth: (context: string) => void
 }
 
 // Seules les entrées « ready » sont affichables : les autres sont en cours de
@@ -34,6 +36,8 @@ function MatchHero({
   onPronoClick,
   revealedPronos,
   friendProfiles,
+  isVisitor,
+  onOpenAuth,
 }: MatchHeroProps) {
   const locked = isMatchLocked(match)
   const resulted = isMatchResulted(match)
@@ -110,7 +114,11 @@ function MatchHero({
 
       <div className={styles.heroCta}>
         <span className={styles.heroCtaStatus}>
-          {resulted ? (
+          {isVisitor ? (
+            <span className={styles.heroCtaVisitor}>
+              Connecte-toi pour pronostiquer ce match.
+            </span>
+          ) : resulted ? (
             existingProno ? (
               <b className={styles.heroCtaGain}>
                 Tu gagnes {calculatePoints(match, existingProno).total} pts
@@ -155,14 +163,25 @@ function MatchHero({
           )}
         </span>
 
-        {!locked && !resulted && (
+        {isVisitor ? (
           <button
             type="button"
-            className={styles.btnPrimary}
-            onClick={() => onPronoClick(match.id)}
+            className={styles.btnVisitor}
+            onClick={() => onOpenAuth('Rejoins Clutch pour pronostiquer.')}
           >
-            {existingProno === null ? 'Faire mon prono' : 'Modifier'}
+            Créer un compte
           </button>
+        ) : (
+          !locked &&
+          !resulted && (
+            <button
+              type="button"
+              className={styles.btnPrimary}
+              onClick={() => onPronoClick(match.id)}
+            >
+              {existingProno === null ? 'Faire mon prono' : 'Modifier'}
+            </button>
+          )
         )}
       </div>
 
